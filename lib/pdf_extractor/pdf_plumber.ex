@@ -13,11 +13,13 @@ defmodule PdfExtractor.PdfPlumber do
     """)
   end
 
+  @type area :: {integer(), integer(), integer(), integer()}
+
   @spec extract_text(
           file_path :: String.t(),
-          page_number :: integer() | list(integer()),
-          areas :: map()
-        ) :: list(String.t())
+          page_number :: non_neg_integer() | list(non_neg_integer()),
+          areas :: %{non_neg_integer() => area() | [area()] | nil}
+        ) :: %{non_neg_integer() => String.t() | [String.t()]}
   def extract_text(file_path, page_number \\ [], areas \\ %{})
 
   def extract_text(file_path, page_number, areas) when is_integer(page_number) do
@@ -32,10 +34,10 @@ defmodule PdfExtractor.PdfPlumber do
     logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
     def extract_from_page(page, area=None):
-        if area:
-            return page.within_bbox(area).extract_text()
-        else:
+        if area is None:
             return page.extract_text()
+        else:
+            return page.within_bbox(area).extract_text()
 
     def main(file_path, page_numbers, areas):
         results = []
@@ -53,7 +55,7 @@ defmodule PdfExtractor.PdfPlumber do
     |> Pythonx.eval(%{
       "file_path" => file_path,
       "page_numbers" => page_numbers,
-      "areas" => areas
+      "areas" => convert_areas(areas)
     })
     |> elem(0)
     |> Pythonx.decode()
@@ -74,5 +76,15 @@ defmodule PdfExtractor.PdfPlumber do
 
   defp version do
     Application.spec(:pdf_extractor, :vsn)
+  end
+
+  defp convert_areas(areas) when is_map(areas) do
+    areas
+    |> Enum.map(fn
+      {k, nil} -> {k, nil}
+      {k, v} when is_tuple(v) -> {k, Tuple.to_list(v)}
+      {k, v} when is_list(v) -> {k, Enum.map(v, &Tuple.to_list/1)}
+    end)
+    |> Map.new()
   end
 end

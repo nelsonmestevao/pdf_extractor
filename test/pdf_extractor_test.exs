@@ -5,7 +5,7 @@ defmodule PdfExtractorTest do
   @test_file_path "priv/fixtures/fatura.pdf"
   @test_file_content "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €"
 
-  describe "text/3" do
+  describe "extract_text/3" do
     test "extracts text from all pages when no page numbers specified" do
       for {page_num, text} <- PdfExtractor.extract_text(@test_file_path) do
         assert is_integer(page_num)
@@ -53,7 +53,7 @@ defmodule PdfExtractorTest do
 
     test "extracts text with area restrictions" do
       # Test with a bounding box area
-      areas = %{0 => [0, 0, 300, 200]}
+      areas = %{0 => {20, 30, 50, 60}}
       result = PdfExtractor.extract_text(@test_file_path, [0], areas)
 
       assert is_map(result)
@@ -74,8 +74,8 @@ defmodule PdfExtractorTest do
 
       if page_count > 1 do
         areas = %{
-          0 => [0, 0, 300, 200],
-          1 => [0, 200, 400, 400]
+          0 => {0, 0, 300, 200},
+          1 => {0, 200, 400, 400}
         }
 
         result = PdfExtractor.extract_text(@test_file_path, [0, 1], areas)
