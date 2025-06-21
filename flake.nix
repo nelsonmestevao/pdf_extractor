@@ -19,7 +19,7 @@
 
           buildInputs = with pkgs; [
             beam28Packages.elixir_1_19
-            erlang_28
+            beam28Packages.erlang
           ];
         };
       }

@@ -44,7 +44,7 @@ defmodule PdfExtractor.MixProject do
   defp package do
     [
       name: @app,
-      files: ~w(lib mix.exs README* LICENSE* CHANGELOG*),
+      files: ~w(lib mix.exs README.md LICENSE CHANGELOG*),
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,

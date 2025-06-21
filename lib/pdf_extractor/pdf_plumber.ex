@@ -13,40 +13,21 @@ defmodule PdfExtractor.PdfPlumber do
     """)
   end
 
+  @type area :: {non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()}
+  @type page :: non_neg_integer()
+
   @spec extract_text(
           file_path :: String.t(),
-          page_number :: integer() | list(integer()),
-          areas :: map()
-        ) :: list(String.t())
-  def extract_text(file_path, page_number \\ [], areas \\ %{})
-
+          page_number :: page() | list(page()),
+          areas :: %{page() => area() | [area()] | nil}
+        ) :: %{page() => String.t() | list(String.t())}
   def extract_text(file_path, page_number, areas) when is_integer(page_number) do
     extract_text(file_path, List.wrap(page_number), areas)
   end
 
   def extract_text(file_path, page_numbers, areas) when is_list(page_numbers) and is_map(areas) do
     """
-    import pdfplumber
-    import logging
-
-    logging.getLogger("pdfminer").setLevel(logging.ERROR)
-
-    def extract_from_page(page, area=None):
-        if area:
-            return page.within_bbox(area).extract_text()
-        else:
-            return page.extract_text()
-
-    def main(file_path, page_numbers, areas):
-        results = []
-        with pdfplumber.open(file_path) as pdf:
-            total_pages = len(pdf.pages)
-            if page_numbers == []:
-              page_numbers = list(range(total_pages))
-            for page_number in page_numbers:
-              if page_number >= 0 and page_number < total_pages:
-                results.append(extract_from_page(pdf.pages[page_number], areas.get(page_number)))
-            return results
+    #{python_extract_code()}
 
     main(file_path.decode('utf-8'), page_numbers, areas)
     """
@@ -66,34 +47,18 @@ defmodule PdfExtractor.PdfPlumber do
     url = "https://erlang.org/download/armstrong_thesis_2003.pdf"
     url |> :httpc.request() |> elem(1) |> elem(2) |> :binary.list_to_bin() |> PdfExtractor.extract_text_from_binary()
   """
+  def extract_text_from_binary(binary, page_number, areas) when is_integer(page_number) do
+    extract_text_from_binary(binary, List.wrap(page_number), areas)
+  end
+
   def extract_text_from_binary(binary, page_numbers, areas)
       when is_list(page_numbers) and is_map(areas) do
     """
-    import pdfplumber
-    import logging
     from io import BytesIO
 
-    logging.getLogger("pdfminer").setLevel(logging.ERROR)
+    #{python_extract_code()}
 
-    def extract_from_page(page, area=None):
-        if area:
-            return page.within_bbox(area).extract_text()
-        else:
-            return page.extract_text()
-
-    def main(binary, page_numbers, areas):
-        results = []
-
-        with pdfplumber.open(BytesIO(binary)) as pdf:
-            total_pages = len(pdf.pages)
-            if page_numbers == []:
-              page_numbers = list(range(total_pages))
-            for page_number in page_numbers:
-              if page_number >= 0 and page_number < total_pages:
-                results.append(extract_from_page(pdf.pages[page_number], areas.get(page_number)))
-            return results
-
-    main(binary, page_numbers, areas)
+    main(BytesIO(binary), page_numbers, areas)
     """
     |> Pythonx.eval(%{
       "binary" => binary,
@@ -105,17 +70,37 @@ defmodule PdfExtractor.PdfPlumber do
     |> to_map(page_numbers)
   end
 
-  def extract_metadata(file_path) do
+  defp python_extract_code do
     """
     import pdfplumber
     import logging
-    from io import BytesIO
 
     logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
-    def main(file_path):
-        with pdfplumber.open(file_path) as pdf:
-        return pdf.metadata
+    def extract_from_page(page, areas=None):
+        if areas is None:
+            return page.extract_text()
+        elif isinstance(areas, list):
+            return [page.within_bbox(area).extract_text() for area in areas]
+        else:
+            return page.within_bbox(areas).extract_text()
+
+    def main(content, page_numbers, areas):
+        results = []
+        with pdfplumber.open(content) as pdf:
+            total_pages = len(pdf.pages)
+            if page_numbers == []:
+              page_numbers = list(range(total_pages))
+            for page_number in page_numbers:
+              if page_number >= 0 and page_number < total_pages:
+                results.append(extract_from_page(pdf.pages[page_number], areas.get(page_number)))
+            return results
+    """
+  end
+
+  def extract_metadata(file_path) do
+    """
+    #{python_extract_metadata_code()}
 
     main(file_path.decode('utf-8'))
     """
@@ -128,25 +113,30 @@ defmodule PdfExtractor.PdfPlumber do
 
   def extract_metadata_from_binary(binary) do
     """
-    import pdfplumber
-    import logging
     from io import BytesIO
 
-    logging.getLogger("pdfminer").setLevel(logging.ERROR)
+    #{python_extract_metadata_code()}
 
-    def main(binary):
-        results = []
-
-        with pdfplumber.open(BytesIO(binary)) as pdf:
-            return pdf.metadata
-
-    main(binary)
+    main(BytesIO(binary))
     """
     |> Pythonx.eval(%{
       "binary" => binary
     })
     |> elem(0)
     |> Pythonx.decode()
+  end
+
+  defp python_extract_metadata_code do
+    """
+    import pdfplumber
+    import logging
+
+    logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
+    def main(content):
+        with pdfplumber.open(content) as pdf:
+          return pdf.metadata
+    """
   end
 
   defp to_map(texts, []) when is_list(texts) do
