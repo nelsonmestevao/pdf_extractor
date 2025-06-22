@@ -44,7 +44,7 @@ defmodule PdfExtractor.MixProject do
   defp package do
     [
       name: @app,
-      files: ~w(lib priv mix.exs README* LICENSE* CHANGELOG*),
+      files: ~w(config lib mix.exs README* LICENSE* CHANGELOG*),
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,
@@ -57,7 +57,7 @@ defmodule PdfExtractor.MixProject do
   defp docs do
     [
       main: "readme",
-      name: "PdfExtractor",
+      name: @name,
       source_ref: "v#{@version}",
       source_url: @source_url,
       extras: ["README.md", "CHANGELOG.md"]
