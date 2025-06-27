@@ -1,6 +1,18 @@
 defmodule PdfExtractor.PdfPlumber do
   @moduledoc false
 
+  def start(_type, _args) do
+    Pythonx.uv_init("""
+    [project]
+    name = "pdf_extractor"
+    version = "#{to_string(version())}"
+    requires-python = "==3.11.*"
+    dependencies = [
+      "pdfplumber==0.11.6"
+    ]
+    """)
+  end
+
   @spec extract_text(
           file_path :: String.t(),
           page_number :: integer() | list(integer()),
@@ -58,5 +70,9 @@ defmodule PdfExtractor.PdfPlumber do
     page_numbers
     |> Enum.zip(texts)
     |> Map.new()
+  end
+
+  defp version do
+    Application.spec(:pdf_extractor, :vsn)
   end
 end

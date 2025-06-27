@@ -26,8 +26,27 @@ Add `pdf_extractor` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:pdf_extractor, "~> 0.2.0"}
+    {:pdf_extractor, "~> 0.2.1"}
   ]
+end
+```
+
+Then start it in your application start function:
+
+```elixir
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      ...
+    ]
+
+    PdfExtractor.start()
+
+    opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
 end
 ```
 
