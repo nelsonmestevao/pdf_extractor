@@ -1,3 +1,6 @@
+# direnv related files
+.direnv
+
 # The directory Mix will write compiled artifacts to.
 /_build/
 
