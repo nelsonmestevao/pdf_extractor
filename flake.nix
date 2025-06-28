@@ -18,14 +18,8 @@
           name = "pdfextractor";
 
           buildInputs = with pkgs; [
-            # languages
-            elixir_1_18
-            erlang_27
-
-            # image processing and optimization
-            file
-            image_optim
-            nodePackages.svgo
+            beam28Packages.elixir_1_19
+            erlang_28
           ];
         };
       }
