@@ -63,7 +63,8 @@ defmodule PdfExtractor.PdfPlumber do
   @doc """
     This version avoids the need to put the pdf on a filesystem.
     This allows this to work
-    url |> :httpc.request() |> elem(1) |> elem(2) |> :binary.list_to_bin() |> PdfExtractor.extract_text_from_url()
+    url = "https://erlang.org/download/armstrong_thesis_2003.pdf"
+    url |> :httpc.request() |> elem(1) |> elem(2) |> :binary.list_to_bin() |> PdfExtractor.extract_text_from_binary()
   """
   def extract_text_from_binary(binary, page_numbers, areas)
       when is_list(page_numbers) and is_map(areas) do
@@ -95,7 +96,7 @@ defmodule PdfExtractor.PdfPlumber do
     main(binary, page_numbers, areas)
     """
     |> Pythonx.eval(%{
-      "url_body" => url_body,
+      "binary" => binary,
       "page_numbers" => page_numbers,
       "areas" => areas
     })
