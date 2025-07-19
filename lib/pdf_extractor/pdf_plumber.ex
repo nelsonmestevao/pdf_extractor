@@ -24,7 +24,7 @@ defmodule PdfExtractor.PdfPlumber do
     extract_text(file_path, List.wrap(page_number), areas)
   end
 
-  def extract_text(body, page_numbers, areas) when is_list(page_numbers) and is_map(areas) do
+  def extract_text(file_path, page_numbers, areas) when is_list(page_numbers) and is_map(areas) do
     """
     import pdfplumber
     import logging
@@ -51,7 +51,7 @@ defmodule PdfExtractor.PdfPlumber do
     main(file_path.decode('utf-8'), page_numbers, areas)
     """
     |> Pythonx.eval(%{
-      "body" => body,
+      "file_path" => file_path,
       "page_numbers" => page_numbers,
       "areas" => areas
     })
@@ -105,7 +105,7 @@ defmodule PdfExtractor.PdfPlumber do
     |> to_map(page_numbers)
   end
 
-  def extract_metadata_from_binary(binary) do
+  def extract_metadata(file_path) do
     """
     import pdfplumber
     import logging
@@ -113,11 +113,26 @@ defmodule PdfExtractor.PdfPlumber do
 
     logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
-    def extract_from_page(page, area=None):
-        if area:
-            return page.within_bbox(area).extract_text()
-        else:
-            return page.extract_text()
+    def main(file_path):
+        with pdfplumber.open(file_path) as pdf:
+        return pdf.metadata
+
+    main(file_path.decode('utf-8'))
+    """
+    |> Pythonx.eval(%{
+      "file_path" => file_path
+    })
+    |> elem(0)
+    |> Pythonx.decode()
+  end
+
+  def extract_metadata_from_binary(binary) do
+    """
+    import pdfplumber
+    import logging
+    from io import BytesIO
+
+    logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
     def main(binary):
         results = []
