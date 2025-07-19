@@ -105,6 +105,35 @@ defmodule PdfExtractor.PdfPlumber do
     |> to_map(page_numbers)
   end
 
+  def extract_metadata_from_binary(binary) do
+    """
+    import pdfplumber
+    import logging
+    from io import BytesIO
+
+    logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
+    def extract_from_page(page, area=None):
+        if area:
+            return page.within_bbox(area).extract_text()
+        else:
+            return page.extract_text()
+
+    def main(binary):
+        results = []
+
+        with pdfplumber.open(BytesIO(binary)) as pdf:
+            return pdf.metadata
+
+    main(binary)
+    """
+    |> Pythonx.eval(%{
+      "binary" => binary
+    })
+    |> elem(0)
+    |> Pythonx.decode()
+  end
+
   defp to_map(texts, []) when is_list(texts) do
     texts
     |> Enum.with_index(&{&2, &1})
