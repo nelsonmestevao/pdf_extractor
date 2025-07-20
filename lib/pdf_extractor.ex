@@ -50,21 +50,11 @@ defmodule PdfExtractor do
     to: PdfExtractor.PdfPlumber
 
   @doc ~S"""
-  Extracts text from PDF binary data.
+  Extracts text from PDF binary data. See `extract_text/3` for details on how to specify pages and areas.
 
   This function allows you to extract text from PDF data that's already in memory,
   such as data downloaded from a URL or received via an API. This avoids the need
   to write the PDF to the filesystem.
-
-  ## Parameters
-
-  - `binary` - PDF data as binary
-  - `page_numbers` - Page(s) to extract from (same format as `extract_text/3`)
-  - `areas` - Optional bounding boxes (same format as `extract_text/3`)
-
-  ## Returns
-
-  Returns a map with the same format as `extract_text/3`.
 
   ## Examples
 
