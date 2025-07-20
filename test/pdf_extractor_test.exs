@@ -1,15 +1,34 @@
 defmodule PdfExtractorTest do
   use ExUnit.Case, async: true
 
-  doctest PdfExtractor
-  @test_file_path "priv/fixtures/fatura.pdf"
-  @test_file_content "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €"
+  setup_all do
+    PdfExtractor.start(:normal, [])
 
-  describe "text/3" do
+    :ok
+  end
+
+  doctest PdfExtractor
+
+  @test_file_path "priv/fixtures/fatura.pdf"
+  @test_file_content %{
+    0 =>
+      "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €",
+    1 =>
+      "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
+  }
+
+  describe "extract_text/3" do
     test "extracts text from all pages when no page numbers specified" do
       for {page_num, text} <- PdfExtractor.extract_text(@test_file_path) do
         assert is_integer(page_num)
         assert is_binary(text)
+        assert text == @test_file_content[page_num]
+      end
+
+      for {page_num, text} <- PdfExtractor.extract_text(@test_file_path, []) do
+        assert is_integer(page_num)
+        assert is_binary(text)
+        assert text == @test_file_content[page_num]
       end
     end
 
@@ -17,121 +36,133 @@ defmodule PdfExtractorTest do
       result = PdfExtractor.extract_text(@test_file_path, 0)
 
       assert is_map(result)
-      assert Map.has_key?(result, 0)
-      assert is_binary(result[0])
+      assert Map.keys(result) == [0]
+      assert result[0] == @test_file_content[0]
     end
 
-    test "extracts text from multiple specific pages when list provided" do
-      result = PdfExtractor.extract_text(@test_file_path, [0])
+    test "extracts text from specified pages when list provided" do
+      result = PdfExtractor.extract_text(@test_file_path, [1])
 
       assert is_map(result)
-      assert Map.has_key?(result, 0)
-      assert is_binary(result[0])
-    end
+      assert Map.keys(result) == [1]
+      assert result[1] == @test_file_content[1]
 
-    test "extracts text from multiple pages" do
-      # First get all pages to know how many we have
-      all_pages = PdfExtractor.extract_text(@test_file_path)
-      page_count = map_size(all_pages)
-
-      if page_count > 1 do
-        result = PdfExtractor.extract_text(@test_file_path, [0, 1])
-
-        assert is_map(result)
-        assert Map.has_key?(result, 0)
-        assert Map.has_key?(result, 1)
-        assert map_size(result) == 2
-      else
-        # If only one page, test with just that page
-        result = PdfExtractor.extract_text(@test_file_path, [0])
-
-        assert is_map(result)
-        assert Map.has_key?(result, 0)
-        assert map_size(result) == 1
-      end
-    end
-
-    test "extracts text with area restrictions" do
-      # Test with a bounding box area
-      areas = %{0 => [0, 0, 300, 200]}
-      result = PdfExtractor.extract_text(@test_file_path, [0], areas)
+      result = PdfExtractor.extract_text(@test_file_path, [0, 1], %{1 => nil})
 
       assert is_map(result)
-      assert Map.has_key?(result, 0)
-      assert is_binary(result[0])
-
-      # Compare with full page extraction - area should be shorter or equal
-      full_result = PdfExtractor.extract_text(@test_file_path, [0])
-      area_text_length = String.length(result[0])
-      full_text_length = String.length(full_result[0])
-
-      assert area_text_length <= full_text_length
+      assert Map.keys(result) == [0, 1]
+      assert result == @test_file_content
     end
 
     test "handles different area specifications for different pages" do
-      all_pages = PdfExtractor.extract_text(@test_file_path)
-      page_count = map_size(all_pages)
+      areas = %{
+        0 => {0, 0, 300, 200},
+        1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
+      }
 
-      if page_count > 1 do
-        areas = %{
-          0 => [0, 0, 300, 200],
-          1 => [0, 200, 400, 400]
-        }
-
-        result = PdfExtractor.extract_text(@test_file_path, [0, 1], areas)
-
-        assert is_map(result)
-        assert Map.has_key?(result, 0)
-        assert Map.has_key?(result, 1)
-        assert is_binary(result[0])
-        assert is_binary(result[1])
-      else
-        # Skip test if only one page
-        :ok
-      end
+      assert PdfExtractor.extract_text(@test_file_path, Map.keys(areas), areas) == %{
+               0 => "Text Example Bill\nProjeto de lei para:\nElixir Company",
+               1 => [
+                 "",
+                 "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
+               ]
+             }
     end
 
     test "handles empty page list" do
-      result = PdfExtractor.extract_text(@test_file_path, [])
-
-      assert is_map(result)
-      assert map_size(result) > 0
+      assert PdfExtractor.extract_text(@test_file_path, []) == @test_file_content
     end
 
-    test "handles non-existent file gracefully" do
+    test "raises for non-existent file" do
       assert_raise(Pythonx.Error, fn ->
         PdfExtractor.extract_text("non_existent_file.pdf")
       end)
     end
 
-    test "returns consistent structure for single vs multiple pages" do
-      # Single page as integer
-      single_result = PdfExtractor.extract_text(@test_file_path, 0)
-      assert is_map(single_result)
-
-      # Single page as list
-      single_list_result = PdfExtractor.extract_text(@test_file_path, [0])
-      assert is_map(single_list_result)
-
-      # Both should have the same content for page 0
-      assert single_result[0] == single_list_result[0]
-    end
-
-    test "works with various area configurations" do
-      # Test with nil area (should work like no area)
-      result_with_nil = PdfExtractor.extract_text(@test_file_path, [0], %{0 => nil})
-      result_without_area = PdfExtractor.extract_text(@test_file_path, [0])
-
-      assert result_with_nil[0] == result_without_area[0]
-    end
-
-    test "extracts non-empty text from test PDF" do
-      %{0 => extracted_text} = PdfExtractor.extract_text(@test_file_path, 0)
-      assert extracted_text == @test_file_content
-    end
-
     test "pages outside the range are just ignored" do
       assert PdfExtractor.extract_text(@test_file_path, [999]) == %{}
+    end
+  end
+
+  describe "extract_text_from_binary/3" do
+    setup do
+      [test_file_binary_content: File.read!(@test_file_path)]
+    end
+
+    test "extracts text from all pages when no page numbers specified", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      for {page_num, text} <- PdfExtractor.extract_text_from_binary(test_file_binary_content) do
+        assert is_integer(page_num)
+        assert is_binary(text)
+        assert text == @test_file_content[page_num]
+      end
+
+      for {page_num, text} <-
+            PdfExtractor.extract_text_from_binary(test_file_binary_content, []) do
+        assert is_integer(page_num)
+        assert is_binary(text)
+        assert text == @test_file_content[page_num]
+      end
+    end
+
+    test "extracts text from single page when integer provided", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      result = PdfExtractor.extract_text_from_binary(test_file_binary_content, 0)
+
+      assert is_map(result)
+      assert Map.keys(result) == [0]
+      assert result[0] == @test_file_content[0]
+    end
+
+    test "extracts text from specified pages when list provided", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      result = PdfExtractor.extract_text_from_binary(test_file_binary_content, [1])
+
+      assert is_map(result)
+      assert Map.keys(result) == [1]
+      assert result[1] == @test_file_content[1]
+
+      result =
+        PdfExtractor.extract_text_from_binary(test_file_binary_content, [0, 1], %{1 => nil})
+
+      assert is_map(result)
+      assert Map.keys(result) == [0, 1]
+      assert result == @test_file_content
+    end
+
+    test "handles different area specifications for different pages", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      areas = %{
+        0 => {0, 0, 300, 200},
+        1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
+      }
+
+      assert PdfExtractor.extract_text_from_binary(
+               test_file_binary_content,
+               Map.keys(areas),
+               areas
+             ) == %{
+               0 => "Text Example Bill\nProjeto de lei para:\nElixir Company",
+               1 => [
+                 "",
+                 "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
+               ]
+             }
+    end
+
+    test "handles empty page list", %{test_file_binary_content: test_file_binary_content} do
+      assert PdfExtractor.extract_text_from_binary(test_file_binary_content, []) ==
+               @test_file_content
+    end
+
+    test "pages outside the range are just ignored", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.extract_text_from_binary(test_file_binary_content, [999]) == %{}
     end
   end
 end

@@ -7,13 +7,18 @@
 [![Last Commit](https://img.shields.io/github/last-commit/nelsonmestevao/pdf_extractor.svg)](https://github.com/nelsonmestevao/pdf_extractor)
 
 
-A lightweight Elixir library for extracting text from PDF files using Python's `pdfplumber`. Supports single and 
-multi-page extraction with optional area filtering.
+A powerful and easy-to-use Elixir library for extracting text and metadata from PDF files.
+
+PdfExtractor leverages Python's `pdfplumber` library through seamless integration to provide
+robust PDF text extraction capabilities. It supports both file-based and binary-based operations,
+making it suitable for various use cases from local file processing to web-based PDF handling.
 
 ## Features
 
 - 🔍 Extract text from single or multiple PDF pages
 - 📍 Area-based extraction using bounding boxes
+- 🌐 Work with PDF data directly from memory (e.g., HTTP downloads)
+- 📊 Get PDF metadata like title, author, creation date
 - 🐍 Leverages Python's powerful `pdfplumber` library
 - 🚀 Simple and intuitive API
 - ✅ Comprehensive test coverage
@@ -55,12 +60,15 @@ end
 Extract text from specific regions using bounding boxes `[x0, y0, x1, y1]`:
 
 ```elixir
-pages = [0, 1] # zero based index
+pages = [0, 1, 2] # zero based index
 areas = %{
-  0 => [0, 0, 300, 200],    # Top-left area of page 0
-  1 => [200, 300, 600, 500] # Bottom-right area of page 1
+  0 => {0, 0, 300, 200},    # Top-left area of page 0
+  1 => [
+        {200, 300, 600, 500}, # Bottom-right area of page 1
+        {0, 0, 200, 250}, # Top-left area of page 1
+       ]
 }
-PdfExtractor.PdfPlumber.extract_text("path/to/document.pdf", pages, areas)
+PdfExtractor.extract_text("path/to/document.pdf", pages, areas)
 ```
 
 ### Return Format
@@ -70,7 +78,7 @@ The function returns a map where keys are page numbers and values are the extrac
 ```elixir
 %{
   0 => "Text from page 0...",
-  1 => "Text from page 1...",
+  1 => ["Text from page 1 (first area)...", "Text from page 1 (second area)..."],
   2 => "Text from page 2..."
 }
 ```
