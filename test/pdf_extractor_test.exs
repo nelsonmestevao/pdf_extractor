@@ -2,7 +2,7 @@ defmodule PdfExtractorTest do
   use ExUnit.Case, async: true
 
   setup_all do
-    start_supervised!(PdfExtractor)
+    start_supervised!({PdfExtractor, []})
 
     :ok
   end
@@ -16,6 +16,18 @@ defmodule PdfExtractorTest do
     1 =>
       "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
   }
+
+  test "start_link/1 has default values for options and can be restarted" do
+    assert {:error, {:already_started, pid}} = PdfExtractor.start_link()
+
+    ref = Process.monitor(pid)
+    GenServer.stop(pid, :shutdown)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}, 1000
+
+    assert {:ok, new_pid} = PdfExtractor.start_link([])
+    assert is_pid(new_pid)
+    assert new_pid != pid
+  end
 
   describe "extract_text/3" do
     test "extracts text from all pages when no page numbers specified" do

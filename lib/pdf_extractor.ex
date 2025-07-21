@@ -11,8 +11,8 @@ defmodule PdfExtractor do
 
   # Client
 
-  def start_link(args \\ []) do
-    GenServer.start(__MODULE__, args, name: __MODULE__)
+  def start_link([] = _opts \\ []) do
+    GenServer.start(__MODULE__, [], name: __MODULE__)
   end
 
   @doc ~S"""
@@ -179,7 +179,7 @@ defmodule PdfExtractor do
 
   @doc false
   @impl true
-  def init(state \\ %{}) do
+  def init([] = state) do
     try do
       :ok = PdfExtractor.PdfPlumber.start()
     rescue
