@@ -32,6 +32,7 @@ defmodule PdfExtractor.MixProject do
       {:pythonx, "~> 0.4.4"},
 
       # tools
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:doctest_formatter, "~> 0.4.0", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.38", only: :dev, runtime: false}

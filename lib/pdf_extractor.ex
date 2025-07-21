@@ -1,5 +1,10 @@
 defmodule PdfExtractor do
-  @moduledoc "README.md" |> File.read!() |> String.split("\n\n") |> tl() |> tl() |> Enum.join("\n\n")
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("\n\n")
+             |> tl()
+             |> tl()
+             |> Enum.join("\n\n")
   use GenServer
 
   @external_resource "README.md"
