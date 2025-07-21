@@ -31,7 +31,7 @@ Add `pdf_extractor` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:pdf_extractor, "~> 0.3.0"}
+    {:pdf_extractor, "~> 0.4.0"}
   ]
 end
 ```
