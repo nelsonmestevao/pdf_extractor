@@ -1,7 +1,7 @@
 defmodule PdfExtractor.PdfPlumber do
   @moduledoc false
 
-  def start(_type, _args) do
+  def start do
     Pythonx.uv_init("""
     [project]
     name = "pdf_extractor"
