@@ -29,8 +29,11 @@ defmodule PdfExtractor.MixProject do
 
   defp deps do
     [
-      {:pythonx, "~> 0.4.0"},
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false}
+      {:pythonx, "~> 0.4.4"},
+
+      # tools
+      {:doctest_formatter, "~> 0.4.0", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.38", only: :dev, runtime: false}
     ]
   end
 
