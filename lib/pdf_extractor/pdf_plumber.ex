@@ -51,8 +51,7 @@ defmodule PdfExtractor.PdfPlumber do
     extract_text_from_binary(binary, List.wrap(page_number), areas)
   end
 
-  def extract_text_from_binary(binary, page_numbers, areas)
-      when is_list(page_numbers) and is_map(areas) do
+  def extract_text_from_binary(binary, page_numbers, areas) when is_list(page_numbers) and is_map(areas) do
     """
     from io import BytesIO
 

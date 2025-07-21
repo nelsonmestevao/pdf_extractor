@@ -1,7 +1,8 @@
 defmodule PdfExtractor do
-  @external_resource "README.md"
-  @moduledoc File.read!("README.md") |> String.split("\n\n") |> tl() |> tl() |> Enum.join("\n\n")
+  @moduledoc "README.md" |> File.read!() |> String.split("\n\n") |> tl() |> tl() |> Enum.join("\n\n")
   use GenServer
+
+  @external_resource "README.md"
 
   # Client
 
@@ -191,10 +192,8 @@ defmodule PdfExtractor do
   @doc false
   @impl true
   def handle_call({function, args}, _from, state) when is_atom(function) and is_list(args) do
-    try do
-      {:reply, {:ok, apply(PdfExtractor.PdfPlumber, function, args)}, state}
-    rescue
-      exception in Pythonx.Error -> {:reply, {:error, exception}, state}
-    end
+    {:reply, {:ok, apply(PdfExtractor.PdfPlumber, function, args)}, state}
+  rescue
+    exception in Pythonx.Error -> {:reply, {:error, exception}, state}
   end
 end
