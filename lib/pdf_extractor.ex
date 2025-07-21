@@ -1,5 +1,5 @@
 defmodule PdfExtractor do
-  @moduledoc File.read!("README.md") |> String.split("\n\n") |> tl() |> Enum.join("\n\n")
+  @moduledoc File.read!("README.md") |> String.split("\n\n") |> tl() |> tl() |> Enum.join("\n\n")
 
   @doc """
   Starts the PdfExtractor application and initializes the Python environment.
