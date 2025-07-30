@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ${{ github.event.repository.default_branch }}
+  pull_request:
+    branches: ${{ github.event.repository.default_branch }}
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04]
+        include:
+          - pair: { elixir: "1.15.8", otp: "25.3" }
+          - pair: { elixir: "1.18.4", otp: "28.0" }
+            format: true
+
+    name: OTP / Elixir (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      MIX_ENV: test
+
+    steps:
+      - name: ☁️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 💧 Setup Elixir ${{ matrix.elixir }} (OTP ${{matrix.otp}})
+        uses: marmelasoft/elixir-setup@v2
+        with:
+          elixir-version: ${{ matrix.pair.elixir }}
+          otp-version: ${{ matrix.pair.otp }}
+          cache-plts: true
+
+      - name: 🔬 Run the tests
+        run: mix test --warnings-as-errors
+
+      - name: 🧹 Check code formating
+        run: mix format --check-formatted
+        if: ${{ matrix.format }}
