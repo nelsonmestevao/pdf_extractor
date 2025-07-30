@@ -12,7 +12,7 @@ defmodule PdfExtractor do
   # Client
 
   def start_link([] = _opts \\ []) do
-    GenServer.start(__MODULE__, [], name: __MODULE__)
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   @doc ~S"""
