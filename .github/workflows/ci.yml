@@ -34,7 +34,7 @@ jobs:
           cache-plts: true
 
       - name: 🔬 Run the tests
-        run: mix test --warnings-as-errors
+        run: mix test --warnings-as-errors --cover
 
       - name: 🧹 Check code formating
         run: mix format --check-formatted
