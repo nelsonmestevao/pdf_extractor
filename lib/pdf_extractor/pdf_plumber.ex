@@ -6,9 +6,9 @@ defmodule PdfExtractor.PdfPlumber do
     [project]
     name = "pdf_extractor"
     version = "#{to_string(version())}"
-    requires-python = "==3.11.*"
+    requires-python = "==3.12.*"
     dependencies = [
-      "pdfplumber==0.11.6"
+      "pdfplumber==0.11.7"
     ]
     """)
   end
