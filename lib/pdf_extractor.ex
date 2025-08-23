@@ -11,8 +11,9 @@ defmodule PdfExtractor do
 
   # Client
 
-  def start_link([] = _opts \\ []) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link(opts \\ []) do
+    opts = Keyword.validate!(opts, name: __MODULE__)
+    GenServer.start_link(__MODULE__, [], name: opts[:name])
   end
 
   @doc ~S"""
@@ -47,9 +48,18 @@ defmodule PdfExtractor do
            "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
        }}
 
+    Extract text from only some pages.
+
+      iex> PdfExtractor.extract_text("priv/fixtures/fatura.pdf", [0])
+      {:ok,
+       %{
+         0 =>
+           "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €"
+       }}
+
     Extract only the titles in the book chapters.
 
-      iex> PdfExtractor.extract_text("priv/fixtures/book.pdf", [2, 8, 10], %{
+      iex> PdfExtractor.extract_text("priv/fixtures/book.pdf", %{
       ...>   2 => {0, 0, 612, 190},
       ...>   8 => {0, 0, 612, 190},
       ...>   10 => {0, 0, 612, 190}
@@ -63,7 +73,7 @@ defmodule PdfExtractor do
 
     Extract multiple areas from a single page.
 
-      iex> PdfExtractor.extract_text("priv/fixtures/book.pdf", 1, %{
+      iex> PdfExtractor.extract_text("priv/fixtures/book.pdf", %{
       ...>   1 => [{0, 100, 612, 140}, {0, 400, 612, 440}]
       ...> })
       {:ok,
@@ -74,8 +84,8 @@ defmodule PdfExtractor do
          ]
        }}
   """
-  def extract_text(file_path, page_numbers \\ [], areas \\ %{}) do
-    GenServer.call(__MODULE__, {:extract_text, [file_path, page_numbers, areas]})
+  def extract_text(file_path, pages \\ []) do
+    GenServer.call(__MODULE__, {:extract_text, [file_path, pages]})
   end
 
   @doc ~S"""
@@ -99,11 +109,21 @@ defmodule PdfExtractor do
            "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
        }}
 
+    Extract text from only some pages.
+
+      iex> content = File.read!("priv/fixtures/fatura.pdf")
+      ...> PdfExtractor.extract_text_from_binary(content, [0])
+      {:ok,
+       %{
+         0 =>
+           "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €"
+       }}
+
     Extract only the titles in the book chapters.
 
       iex> content = File.read!("priv/fixtures/book.pdf")
       ...>
-      ...> PdfExtractor.extract_text_from_binary(content, [2, 8, 10], %{
+      ...> PdfExtractor.extract_text_from_binary(content, %{
       ...>   2 => {0, 0, 612, 190},
       ...>   8 => {0, 0, 612, 190},
       ...>   10 => {0, 0, 612, 190}
@@ -119,7 +139,7 @@ defmodule PdfExtractor do
 
       iex> content = File.read!("priv/fixtures/book.pdf")
       ...>
-      ...> PdfExtractor.extract_text_from_binary(content, 1, %{
+      ...> PdfExtractor.extract_text_from_binary(content, %{
       ...>   1 => [{0, 100, 612, 140}, {0, 400, 612, 440}]
       ...> })
       {:ok,
@@ -131,8 +151,8 @@ defmodule PdfExtractor do
        }}
 
   """
-  def extract_text_from_binary(binary, page_numbers \\ [], areas \\ %{}) do
-    GenServer.call(__MODULE__, {:extract_text_from_binary, [binary, page_numbers, areas]})
+  def extract_text_from_binary(binary, pages \\ []) do
+    GenServer.call(__MODULE__, {:extract_text_from_binary, [binary, pages]})
   end
 
   @doc """

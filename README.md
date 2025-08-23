@@ -56,10 +56,9 @@ end
 
 ## Usage
 
-Extract text from specific regions using bounding boxes `[x0, y0, x1, y1]`:
+Extract text from specific regions using bounding boxes `{x0, y0, x1, y1}`:
 
 ```elixir
-pages = [0, 1, 2] # zero based index
 areas = %{
   0 => {0, 0, 300, 200},    # Top-left area of page 0
   1 => [
@@ -67,7 +66,7 @@ areas = %{
         {0, 0, 200, 250}, # Top-left area of page 1
        ]
 }
-PdfExtractor.extract_text("path/to/document.pdf", pages, areas)
+PdfExtractor.extract_text("path/to/document.pdf", areas)
 ```
 
 ### Return Format
@@ -90,4 +89,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Built on top of the excellent [pdfplumber](https://github.com/jsvine/pdfplumber) Python library
 - Uses [pythonx](https://github.com/livebook-dev/pythonx) for seamless Python integration
-

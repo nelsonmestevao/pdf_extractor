@@ -18,14 +18,13 @@ defmodule PdfExtractor.PdfPlumber do
 
   @spec extract_text(
           file_path :: String.t(),
-          page_number :: page() | list(page()),
-          areas :: %{page() => area() | [area()] | nil}
+          pages :: page() | list(page()) | %{page() => area() | [area()] | nil}
         ) :: %{page() => String.t() | list(String.t())}
-  def extract_text(file_path, page_number, areas) when is_integer(page_number) do
-    extract_text(file_path, List.wrap(page_number), areas)
+  def extract_text(file_path, page_number) when is_integer(page_number) do
+    extract_text(file_path, List.wrap(page_number))
   end
 
-  def extract_text(file_path, page_numbers, areas) when is_list(page_numbers) and is_map(areas) do
+  def extract_text(file_path, pages) when is_list(pages) do
     """
     #{python_extract_code()}
 
@@ -33,12 +32,28 @@ defmodule PdfExtractor.PdfPlumber do
     """
     |> Pythonx.eval(%{
       "file_path" => file_path,
-      "page_numbers" => page_numbers,
-      "areas" => areas
+      "page_numbers" => pages,
+      "areas" => %{}
     })
     |> elem(0)
     |> Pythonx.decode()
-    |> to_map(page_numbers)
+    |> to_map(pages)
+  end
+
+  def extract_text(file_path, pages) when is_map(pages) do
+    """
+    #{python_extract_code()}
+
+    main(file_path.decode('utf-8'), page_numbers, areas)
+    """
+    |> Pythonx.eval(%{
+      "file_path" => file_path,
+      "page_numbers" => Map.keys(pages),
+      "areas" => pages
+    })
+    |> elem(0)
+    |> Pythonx.decode()
+    |> to_map(Map.keys(pages))
   end
 
   @doc """
@@ -47,11 +62,11 @@ defmodule PdfExtractor.PdfPlumber do
     url = "https://erlang.org/download/armstrong_thesis_2003.pdf"
     url |> :httpc.request() |> elem(1) |> elem(2) |> :binary.list_to_bin() |> PdfExtractor.extract_text_from_binary()
   """
-  def extract_text_from_binary(binary, page_number, areas) when is_integer(page_number) do
-    extract_text_from_binary(binary, List.wrap(page_number), areas)
+  def extract_text_from_binary(binary, page_number) when is_integer(page_number) do
+    extract_text_from_binary(binary, List.wrap(page_number))
   end
 
-  def extract_text_from_binary(binary, page_numbers, areas) when is_list(page_numbers) and is_map(areas) do
+  def extract_text_from_binary(binary, pages) when is_list(pages) do
     """
     from io import BytesIO
 
@@ -61,12 +76,30 @@ defmodule PdfExtractor.PdfPlumber do
     """
     |> Pythonx.eval(%{
       "binary" => binary,
-      "page_numbers" => page_numbers,
-      "areas" => areas
+      "page_numbers" => pages,
+      "areas" => %{}
     })
     |> elem(0)
     |> Pythonx.decode()
-    |> to_map(page_numbers)
+    |> to_map(pages)
+  end
+
+  def extract_text_from_binary(binary, pages) when is_map(pages) do
+    """
+    from io import BytesIO
+
+    #{python_extract_code()}
+
+    main(BytesIO(binary), page_numbers, areas)
+    """
+    |> Pythonx.eval(%{
+      "binary" => binary,
+      "page_numbers" => Map.keys(pages),
+      "areas" => pages
+    })
+    |> elem(0)
+    |> Pythonx.decode()
+    |> to_map(Map.keys(pages))
   end
 
   defp python_extract_code do

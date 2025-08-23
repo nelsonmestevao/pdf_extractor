@@ -61,7 +61,7 @@ defmodule PdfExtractorTest do
       assert Map.keys(result) == [1]
       assert result[1] == @test_file_content[1]
 
-      assert {:ok, result} = PdfExtractor.extract_text(@test_file_path, [0, 1], %{1 => nil})
+      assert {:ok, result} = PdfExtractor.extract_text(@test_file_path, [0, 1])
 
       assert is_map(result)
       assert Map.keys(result) == [0, 1]
@@ -74,7 +74,7 @@ defmodule PdfExtractorTest do
         1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
       }
 
-      assert PdfExtractor.extract_text(@test_file_path, Map.keys(areas), areas) ==
+      assert PdfExtractor.extract_text(@test_file_path, areas) ==
                {:ok,
                 %{
                   0 => "Text Example Bill\nProjeto de lei para:\nElixir Company",
@@ -143,7 +143,7 @@ defmodule PdfExtractorTest do
       assert result[1] == @test_file_content[1]
 
       assert {:ok, result} =
-               PdfExtractor.extract_text_from_binary(test_file_binary_content, [0, 1], %{1 => nil})
+               PdfExtractor.extract_text_from_binary(test_file_binary_content, [0, 1])
 
       assert is_map(result)
       assert Map.keys(result) == [0, 1]
@@ -158,11 +158,7 @@ defmodule PdfExtractorTest do
         1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
       }
 
-      assert PdfExtractor.extract_text_from_binary(
-               test_file_binary_content,
-               Map.keys(areas),
-               areas
-             ) ==
+      assert PdfExtractor.extract_text_from_binary(test_file_binary_content, areas) ==
                {:ok,
                 %{
                   0 => "Text Example Bill\nProjeto de lei para:\nElixir Company",
