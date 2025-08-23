@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-08-23
+
+- Simplify arguments to avoid repetition
+- Upgrade Python to v3.12 and pdfplumber to v0.11.7
+- Lower Elixir requirement to v1.15
+
 ## [0.4.1] - 2025-07-30
 
 - Fix `PdfExtractor.start_link/1` call to link the process correctly to the supervisor tree
