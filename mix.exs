@@ -17,6 +17,8 @@ defmodule PdfExtractor.MixProject do
       description: description(),
       package: package(),
       docs: docs(),
+      aliases: aliases(),
+      dialyzer: dialyzer(),
       source_url: @source_url
     ]
   end
@@ -33,9 +35,16 @@ defmodule PdfExtractor.MixProject do
 
       # tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:doctest_formatter, "~> 0.4.0", only: [:dev, :test], runtime: false},
-      {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.38", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.38", only: :dev, runtime: false},
+      {:styler, "~> 1.0", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      "lint.dialyzer": ["dialyzer --format dialyxir"]
     ]
   end
 
@@ -66,6 +75,16 @@ defmodule PdfExtractor.MixProject do
       source_ref: "v#{@version}",
       source_url: @source_url,
       extras: ["README.md", "CHANGELOG.md", "LICENSE"]
+    ]
+  end
+
+  defp dialyzer do
+    [
+      flags: [:no_opaque],
+      list_unused_filters: true,
+      plt_add_deps: :apps_tree,
+      plt_add_apps: [:ex_unit, :iex, :mix, :credo_naming],
+      plt_file: {:no_warn, "priv/plts/elixir-#{System.version()}-erlang-otp-#{System.otp_release()}.plt"}
     ]
   end
 end
