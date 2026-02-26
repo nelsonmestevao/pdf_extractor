@@ -17,6 +17,7 @@ jobs:
         include:
           - pair: { elixir: "1.15.8", otp: "25.3" }
           - pair: { elixir: "1.18.4", otp: "28.0" }
+          - pair: { elixir: "1.19.5", otp: "28.3" }
             format: true
 
     name: OTP / Elixir (${{ matrix.os }})

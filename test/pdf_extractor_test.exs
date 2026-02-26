@@ -1,10 +1,14 @@
 defmodule PdfExtractorTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   setup do
-    pid = start_supervised!({PdfExtractor, []})
+    # Ensure the GenServer is started for each test
+    case PdfExtractor.start_link() do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+    end
 
-    {:ok, %{pid: pid}}
+    :ok
   end
 
   doctest PdfExtractor
@@ -17,11 +21,44 @@ defmodule PdfExtractorTest do
       "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
   }
 
-  test "start_link/1 has default values for options and can be restarted", %{pid: pid} do
-    assert PdfExtractor.start_link() == {:error, {:already_started, pid}}
+  test "start_link/1 has default values for options and can be restarted" do
+    # The GenServer should already be started from setup
+    assert {:error, {:already_started, pid}} = PdfExtractor.start_link()
+    assert is_pid(pid)
 
-    stop_supervised!(PdfExtractor)
+    # Test that we can stop and restart it
+    ref = Process.monitor(pid)
+    GenServer.stop(pid, :shutdown)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}, 1000
 
+    # Should be able to start again
+    assert {:ok, new_pid} = PdfExtractor.start_link([])
+    assert is_pid(new_pid)
+    assert new_pid != pid
+
+    # Ensure it's working by calling a function
+    assert {:ok, _result} = PdfExtractor.extract_text(@test_file_path, 0)
+  end
+
+  @test_file_path "priv/fixtures/fatura.pdf"
+  @test_file_content %{
+    0 =>
+      "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €",
+    1 =>
+      "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
+  }
+
+  test "start_link/1 has default values for options and can be restarted" do
+    # The GenServer should already be started from setup_all
+    assert {:error, {:already_started, pid}} = PdfExtractor.start_link()
+    assert is_pid(pid)
+
+    # Test that we can stop and restart it
+    ref = Process.monitor(pid)
+    GenServer.stop(pid, :shutdown)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}, 1000
+
+    # Should be able to start again
     assert {:ok, new_pid} = PdfExtractor.start_link([])
     assert is_pid(new_pid)
     assert new_pid != pid
@@ -61,7 +98,7 @@ defmodule PdfExtractorTest do
       assert Map.keys(result) == [1]
       assert result[1] == @test_file_content[1]
 
-      assert {:ok, result} = PdfExtractor.extract_text(@test_file_path, [0, 1])
+      assert {:ok, result} = PdfExtractor.extract_text(@test_file_path, [0, 1], %{1 => nil})
 
       assert is_map(result)
       assert Map.keys(result) == [0, 1]
@@ -74,7 +111,7 @@ defmodule PdfExtractorTest do
         1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
       }
 
-      assert PdfExtractor.extract_text(@test_file_path, areas) ==
+      assert PdfExtractor.extract_text(@test_file_path, Map.keys(areas), areas) ==
                {:ok,
                 %{
                   0 => "Text Example Bill\nProjeto de lei para:\nElixir Company",
@@ -143,7 +180,7 @@ defmodule PdfExtractorTest do
       assert result[1] == @test_file_content[1]
 
       assert {:ok, result} =
-               PdfExtractor.extract_text_from_binary(test_file_binary_content, [0, 1])
+               PdfExtractor.extract_text_from_binary(test_file_binary_content, [0, 1], %{1 => nil})
 
       assert is_map(result)
       assert Map.keys(result) == [0, 1]
@@ -158,7 +195,11 @@ defmodule PdfExtractorTest do
         1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
       }
 
-      assert PdfExtractor.extract_text_from_binary(test_file_binary_content, areas) ==
+      assert PdfExtractor.extract_text_from_binary(
+               test_file_binary_content,
+               Map.keys(areas),
+               areas
+             ) ==
                {:ok,
                 %{
                   0 => "Text Example Bill\nProjeto de lei para:\nElixir Company",
