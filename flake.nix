@@ -2,26 +2,40 @@
   description = "Development Environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    beam-flakes = {
+      url = "github:elixir-tools/nix-beam-flakes";
+      inputs.flake-parts.follows = "flake-parts";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
-  outputs = { nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          config.allowUnfree = false;
-        };
-      in {
-        devShells.default = pkgs.mkShell {
-          name = "pdfextractor";
+  outputs = inputs @ {
+    beam-flakes,
+    flake-parts,
+    ...
+  }:
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      imports = [beam-flakes.flakeModule];
 
-          buildInputs = with pkgs; [
-            beam28Packages.elixir_1_19
-            beam28Packages.erlang
-          ];
+      systems = [
+        "aarch64-darwin"
+        "x86_64-darwin"
+        "x86_64-linux"
+      ];
+
+      perSystem = {pkgs, ...}: {
+        formatter = pkgs.alejandra;
+
+        beamWorkspace = {
+          enable = true;
+          devShell = {
+            extraPackages = with pkgs; [
+            ];
+          };
+          versions.fromToolVersions = ./.tool-versions;
         };
-      }
-    );
+      };
+    };
 }
