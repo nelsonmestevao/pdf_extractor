@@ -25,35 +25,11 @@ defmodule PdfExtractor.PdfPlumber do
   end
 
   def extract_text(file_path, pages) when is_list(pages) do
-    """
-    #{python_extract_code()}
-
-    main(file_path.decode('utf-8'), page_numbers, areas)
-    """
-    |> Pythonx.eval(%{
-      "file_path" => file_path,
-      "page_numbers" => pages,
-      "areas" => %{}
-    })
-    |> elem(0)
-    |> Pythonx.decode()
-    |> to_map(pages)
+    do_extract_text("file_path.decode('utf-8')", %{"file_path" => file_path}, pages, %{})
   end
 
   def extract_text(file_path, pages) when is_map(pages) do
-    """
-    #{python_extract_code()}
-
-    main(file_path.decode('utf-8'), page_numbers, areas)
-    """
-    |> Pythonx.eval(%{
-      "file_path" => file_path,
-      "page_numbers" => Map.keys(pages),
-      "areas" => pages
-    })
-    |> elem(0)
-    |> Pythonx.decode()
-    |> to_map(Map.keys(pages))
+    do_extract_text("file_path.decode('utf-8')", %{"file_path" => file_path}, Map.keys(pages), pages)
   end
 
   @doc """
@@ -67,39 +43,23 @@ defmodule PdfExtractor.PdfPlumber do
   end
 
   def extract_text_from_binary(binary, pages) when is_list(pages) do
-    """
-    from io import BytesIO
-
-    #{python_extract_code()}
-
-    main(BytesIO(binary), page_numbers, areas)
-    """
-    |> Pythonx.eval(%{
-      "binary" => binary,
-      "page_numbers" => pages,
-      "areas" => %{}
-    })
-    |> elem(0)
-    |> Pythonx.decode()
-    |> to_map(pages)
+    do_extract_text("BytesIO(binary)", %{"binary" => binary}, pages, %{}, "from io import BytesIO\n")
   end
 
   def extract_text_from_binary(binary, pages) when is_map(pages) do
-    """
-    from io import BytesIO
+    do_extract_text("BytesIO(binary)", %{"binary" => binary}, Map.keys(pages), pages, "from io import BytesIO\n")
+  end
 
-    #{python_extract_code()}
-
-    main(BytesIO(binary), page_numbers, areas)
+  defp do_extract_text(content_expr, bindings, page_numbers, areas, preamble \\ "") do
     """
-    |> Pythonx.eval(%{
-      "binary" => binary,
-      "page_numbers" => Map.keys(pages),
-      "areas" => pages
-    })
+    #{preamble}#{python_extract_code()}
+
+    main(#{content_expr}, page_numbers, areas)
+    """
+    |> Pythonx.eval(Map.merge(bindings, %{"page_numbers" => page_numbers, "areas" => areas}))
     |> elem(0)
     |> Pythonx.decode()
-    |> to_map(Map.keys(pages))
+    |> to_map(page_numbers)
   end
 
   defp python_extract_code do
