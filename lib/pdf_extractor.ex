@@ -89,7 +89,7 @@ defmodule PdfExtractor do
   end
 
   @doc ~S"""
-  Extracts text from PDF binary data. See `extract_text/3` for details on how to specify pages and areas.
+  Extracts text from PDF binary data. See `extract_text/2` for details on how to specify pages and areas.
 
   This function allows you to extract text from PDF data that's already in memory,
   such as data downloaded from a URL or received via an API. This avoids the need
