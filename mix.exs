@@ -31,7 +31,7 @@ defmodule PdfExtractor.MixProject do
 
   defp deps do
     [
-      {:pythonx, "~> 0.4.4"},
+      {:pythonx, "~> 0.4.9"},
 
       # tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

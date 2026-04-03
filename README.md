@@ -59,14 +59,14 @@ end
 Extract text from specific regions using bounding boxes `{x0, y0, x1, y1}`:
 
 ```elixir
-areas = %{
+pages = %{
   0 => {0, 0, 300, 200},    # Top-left area of page 0
   1 => [
         {200, 300, 600, 500}, # Bottom-right area of page 1
         {0, 0, 200, 250}, # Top-left area of page 1
        ]
 }
-PdfExtractor.extract_text("path/to/document.pdf", areas)
+PdfExtractor.extract_text("path/to/document.pdf", pages)
 ```
 
 ### Return Format
