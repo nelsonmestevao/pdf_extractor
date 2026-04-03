@@ -3,7 +3,7 @@ defmodule PdfExtractor.MixProject do
 
   @app :pdf_extractor
   @name "PdfExtractor"
-  @version "0.5.1"
+  @version "0.6.0"
   @source_url "https://github.com/nelsonmestevao/pdf_extractor"
 
   def project do
