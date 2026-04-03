@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-04-03
+
+- Upgrade pdfplumber to v0.11.9
+- Upgrade pythonx to v0.4.9
+
 ## [0.5.0] - 2025-08-23
 
 - Simplify arguments to avoid repetition
