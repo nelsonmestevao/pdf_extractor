@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-03
+
+- Add configurable `timeout` option to all extraction functions (default: 5000ms)
+- Add `name` option to target a specific server process
+
 ## [0.5.1] - 2026-04-03
 
 - Upgrade pdfplumber to v0.11.9
@@ -77,7 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pythonx ~> 0.4.0 for Python integration
 - Requires Python with pdfplumber package installed
 
-[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.4.0...v0.4.1
