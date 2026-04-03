@@ -42,6 +42,7 @@ defmodule PdfExtractor do
   All extraction functions accept the same options:
 
   - `:timeout` - timeout in milliseconds for the GenServer call (default: `#{@default_timeout}`)
+  - `:name` - name or PID of the server to call (default: `PdfExtractor`)
 
   ## Examples
 
@@ -109,8 +110,8 @@ defmodule PdfExtractor do
 
   """
   def extract_text(file_path, pages \\ [], opts \\ []) do
-    %{timeout: timeout} = validate_opts!(opts)
-    GenServer.call(__MODULE__, {:extract_text, [file_path, pages]}, timeout)
+    %{timeout: timeout, name: name} = validate_opts!(opts)
+    GenServer.call(name, {:extract_text, [file_path, pages]}, timeout)
   end
 
   @doc ~S"""
@@ -181,8 +182,8 @@ defmodule PdfExtractor do
 
   """
   def extract_text_from_binary(binary, pages \\ [], opts \\ []) do
-    %{timeout: timeout} = validate_opts!(opts)
-    GenServer.call(__MODULE__, {:extract_text_from_binary, [binary, pages]}, timeout)
+    %{timeout: timeout, name: name} = validate_opts!(opts)
+    GenServer.call(name, {:extract_text_from_binary, [binary, pages]}, timeout)
   end
 
   @doc """
@@ -195,8 +196,8 @@ defmodule PdfExtractor do
 
   """
   def extract_metadata(file_path, opts \\ []) do
-    %{timeout: timeout} = validate_opts!(opts)
-    GenServer.call(__MODULE__, {:extract_metadata, [file_path]}, timeout)
+    %{timeout: timeout, name: name} = validate_opts!(opts)
+    GenServer.call(name, {:extract_metadata, [file_path]}, timeout)
   end
 
   @doc """
@@ -211,13 +212,13 @@ defmodule PdfExtractor do
 
   """
   def extract_metadata_from_binary(binary, opts \\ []) do
-    %{timeout: timeout} = validate_opts!(opts)
-    GenServer.call(__MODULE__, {:extract_metadata_from_binary, [binary]}, timeout)
+    %{timeout: timeout, name: name} = validate_opts!(opts)
+    GenServer.call(name, {:extract_metadata_from_binary, [binary]}, timeout)
   end
 
   defp validate_opts!(opts) do
     opts
-    |> Keyword.validate!(timeout: @default_timeout)
+    |> Keyword.validate!(timeout: @default_timeout, name: __MODULE__)
     |> Map.new()
   end
 

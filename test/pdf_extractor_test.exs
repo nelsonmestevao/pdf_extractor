@@ -27,6 +27,17 @@ defmodule PdfExtractorTest do
     assert new_pid != pid
   end
 
+  test "extracts text using a custom server name" do
+    {:ok, pid} = PdfExtractor.start_link(name: :custom_pdf)
+
+    assert {:ok, result} = PdfExtractor.extract_text(@test_file_path, [], name: :custom_pdf)
+    assert result == @test_file_content
+
+    GenServer.stop(pid)
+
+    assert catch_exit(PdfExtractor.extract_text(@test_file_path, [], name: :custom_pdf))
+  end
+
   describe "extract_text/3" do
     test "extracts text from all pages when no page numbers specified" do
       assert {:ok, result} = PdfExtractor.extract_text(@test_file_path)
