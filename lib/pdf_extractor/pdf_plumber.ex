@@ -1,6 +1,43 @@
 defmodule PdfExtractor.PdfPlumber do
   @moduledoc false
 
+  @python_extract_code """
+  import pdfplumber
+  import logging
+
+  logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
+  def extract_from_page(page, areas=None):
+      if areas is None:
+          return page.extract_text()
+      elif isinstance(areas, list):
+          return [page.within_bbox(area).extract_text() for area in areas]
+      else:
+          return page.within_bbox(areas).extract_text()
+
+  def main(content, page_numbers, areas):
+      results = []
+      with pdfplumber.open(content) as pdf:
+          total_pages = len(pdf.pages)
+          if page_numbers == []:
+            page_numbers = list(range(total_pages))
+          for page_number in page_numbers:
+            if page_number >= 0 and page_number < total_pages:
+              results.append(extract_from_page(pdf.pages[page_number], areas.get(page_number)))
+          return results
+  """
+
+  @python_extract_metadata_code """
+  import pdfplumber
+  import logging
+
+  logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
+  def main(content):
+      with pdfplumber.open(content) as pdf:
+        return pdf.metadata
+  """
+
   def start do
     Pythonx.uv_init("""
     [project]
@@ -69,7 +106,7 @@ defmodule PdfExtractor.PdfPlumber do
 
   defp do_extract_text(content_expr, bindings, page_numbers, areas, preamble \\ "") do
     """
-    #{preamble}#{python_extract_code()}
+    #{preamble}#{@python_extract_code}
 
     main(#{content_expr}, page_numbers, areas)
     """
@@ -79,37 +116,9 @@ defmodule PdfExtractor.PdfPlumber do
     |> to_map(page_numbers)
   end
 
-  defp python_extract_code do
-    """
-    import pdfplumber
-    import logging
-
-    logging.getLogger("pdfminer").setLevel(logging.ERROR)
-
-    def extract_from_page(page, areas=None):
-        if areas is None:
-            return page.extract_text()
-        elif isinstance(areas, list):
-            return [page.within_bbox(area).extract_text() for area in areas]
-        else:
-            return page.within_bbox(areas).extract_text()
-
-    def main(content, page_numbers, areas):
-        results = []
-        with pdfplumber.open(content) as pdf:
-            total_pages = len(pdf.pages)
-            if page_numbers == []:
-              page_numbers = list(range(total_pages))
-            for page_number in page_numbers:
-              if page_number >= 0 and page_number < total_pages:
-                results.append(extract_from_page(pdf.pages[page_number], areas.get(page_number)))
-            return results
-    """
-  end
-
   def extract_metadata(file_path) do
     """
-    #{python_extract_metadata_code()}
+    #{@python_extract_metadata_code}
 
     main(file_path.decode('utf-8'))
     """
@@ -124,7 +133,7 @@ defmodule PdfExtractor.PdfPlumber do
     """
     from io import BytesIO
 
-    #{python_extract_metadata_code()}
+    #{@python_extract_metadata_code}
 
     main(BytesIO(binary))
     """
@@ -133,19 +142,6 @@ defmodule PdfExtractor.PdfPlumber do
     })
     |> elem(0)
     |> Pythonx.decode()
-  end
-
-  defp python_extract_metadata_code do
-    """
-    import pdfplumber
-    import logging
-
-    logging.getLogger("pdfminer").setLevel(logging.ERROR)
-
-    def main(content):
-        with pdfplumber.open(content) as pdf:
-          return pdf.metadata
-    """
   end
 
   defp to_map(texts, []) when is_list(texts) do
