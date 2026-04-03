@@ -29,7 +29,12 @@ defmodule PdfExtractor.PdfPlumber do
   end
 
   def extract_text(file_path, pages) when is_map(pages) do
-    do_extract_text("file_path.decode('utf-8')", %{"file_path" => file_path}, Map.keys(pages), pages)
+    do_extract_text(
+      "file_path.decode('utf-8')",
+      %{"file_path" => file_path},
+      Map.keys(pages),
+      pages
+    )
   end
 
   @doc """
@@ -43,11 +48,23 @@ defmodule PdfExtractor.PdfPlumber do
   end
 
   def extract_text_from_binary(binary, pages) when is_list(pages) do
-    do_extract_text("BytesIO(binary)", %{"binary" => binary}, pages, %{}, "from io import BytesIO\n")
+    do_extract_text(
+      "BytesIO(binary)",
+      %{"binary" => binary},
+      pages,
+      %{},
+      "from io import BytesIO\n"
+    )
   end
 
   def extract_text_from_binary(binary, pages) when is_map(pages) do
-    do_extract_text("BytesIO(binary)", %{"binary" => binary}, Map.keys(pages), pages, "from io import BytesIO\n")
+    do_extract_text(
+      "BytesIO(binary)",
+      %{"binary" => binary},
+      Map.keys(pages),
+      pages,
+      "from io import BytesIO\n"
+    )
   end
 
   defp do_extract_text(content_expr, bindings, page_numbers, areas, preamble \\ "") do

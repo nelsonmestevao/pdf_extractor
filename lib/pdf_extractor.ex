@@ -9,6 +9,8 @@ defmodule PdfExtractor do
 
   @external_resource "README.md"
 
+  @default_timeout 5_000
+
   # Client
 
   def start_link(opts \\ []) do
@@ -35,6 +37,12 @@ defmodule PdfExtractor do
   - **Multiple areas**: `%{0 => [{x0, y0, x1, y1}, {x2, y2, x3, y3}]}`
   - **Mixed**: `%{0 => {x0, y0, x1, y1}, 1 => [{x2, y2, x3, y3}, {x4, y4, x5, y5}]}`
 
+  ## Options
+
+  All extraction functions accept the same options:
+
+  - `:timeout` - timeout in milliseconds for the GenServer call (default: `#{@default_timeout}`)
+
   ## Examples
 
     Extract text from all pages.
@@ -57,39 +65,56 @@ defmodule PdfExtractor do
            "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €"
        }}
 
-    Extract only the titles in the book chapters.
+    Extract only the titles in the book.
 
-      iex> PdfExtractor.extract_text("priv/fixtures/book.pdf", %{
+      iex> PdfExtractor.extract_text("priv/fixtures/frankenstein-mary-shelley.pdf", %{
+      ...>   1 => {0, 0, 612, 190},
       ...>   2 => {0, 0, 612, 190},
       ...>   8 => {0, 0, 612, 190},
-      ...>   10 => {0, 0, 612, 190}
+      ...>   12 => {0, 0, 612, 190},
+      ...>   13 => {0, 0, 612, 190}
       ...> })
       {:ok,
        %{
-         2 => "Introdução – Nota do tradutor",
-         8 => "I. Sobre aproveitar o tempo",
-         10 => "II. Sobre a falta de foco na Leitura"
+         1 => "Frankenstein",
+         2 => "Introduction",
+         8 => "Preface",
+         12 => "Frankenstein",
+         13 => "Letter I"
        }}
 
     Extract multiple areas from a single page.
 
-      iex> PdfExtractor.extract_text("priv/fixtures/book.pdf", %{
-      ...>   1 => [{0, 100, 612, 140}, {0, 400, 612, 440}]
+      iex> PdfExtractor.extract_text("priv/fixtures/frankenstein-mary-shelley.pdf", %{
+      ...>   13 => [{0, 200, 600, 300}, {0, 400, 612, 440}]
       ...> })
       {:ok,
        %{
-         1 => [
-           "CARTAS DE UM ESTOICO, Volume I",
-           "Montecristo Editora Ltda.\ne-mail: editora@montecristoeditora.com.br"
+         13 => [
+           "To Mrs. Saville, England.\nSt. Petersburgh, Dec. 11th, 17 —.",
+           "I am already far north of London; and as I walk in the streets of\nPetersburgh, I feel a cold northern breeze play upon my cheeks, which"
          ]
        }}
+
+    Extract with a custom timeout for large files.
+
+      iex> PdfExtractor.extract_text("priv/fixtures/frankenstein-mary-shelley.pdf", 11,
+      ...>   timeout: 30_000
+      ...> )
+      {:ok,
+       %{
+         11 =>
+           "“Did I request thee, Maker, from my clay\nTo mould me Man, did I solicit thee\nFrom darkness to promote me?”\nP L , X, 743 – 45\nARADISE OST"
+       }}
+
   """
-  def extract_text(file_path, pages \\ []) do
-    GenServer.call(__MODULE__, {:extract_text, [file_path, pages]})
+  def extract_text(file_path, pages \\ [], opts \\ []) do
+    %{timeout: timeout} = validate_opts!(opts)
+    GenServer.call(__MODULE__, {:extract_text, [file_path, pages]}, timeout)
   end
 
   @doc ~S"""
-  Extracts text from PDF binary data. See `extract_text/2` for details on how to specify pages and areas.
+  Extracts text from PDF binary data. See `extract_text/2` for details on how to specify pages, areas, and options.
 
   This function allows you to extract text from PDF data that's already in memory,
   such as data downloaded from a URL or received via an API. This avoids the need
@@ -119,40 +144,45 @@ defmodule PdfExtractor do
            "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €"
        }}
 
-    Extract only the titles in the book chapters.
+    Extract only the titles in the book.
 
-      iex> content = File.read!("priv/fixtures/book.pdf")
+      iex> content = File.read!("priv/fixtures/frankenstein-mary-shelley.pdf")
       ...>
       ...> PdfExtractor.extract_text_from_binary(content, %{
+      ...>   1 => {0, 0, 612, 190},
       ...>   2 => {0, 0, 612, 190},
       ...>   8 => {0, 0, 612, 190},
-      ...>   10 => {0, 0, 612, 190}
+      ...>   12 => {0, 0, 612, 190},
+      ...>   13 => {0, 0, 612, 190}
       ...> })
       {:ok,
        %{
-         2 => "Introdução – Nota do tradutor",
-         8 => "I. Sobre aproveitar o tempo",
-         10 => "II. Sobre a falta de foco na Leitura"
+         1 => "Frankenstein",
+         2 => "Introduction",
+         8 => "Preface",
+         12 => "Frankenstein",
+         13 => "Letter I"
        }}
 
     Extract multiple areas from a single page.
 
-      iex> content = File.read!("priv/fixtures/book.pdf")
+      iex> content = File.read!("priv/fixtures/frankenstein-mary-shelley.pdf")
       ...>
       ...> PdfExtractor.extract_text_from_binary(content, %{
-      ...>   1 => [{0, 100, 612, 140}, {0, 400, 612, 440}]
+      ...>   13 => [{0, 200, 600, 300}, {0, 400, 612, 440}]
       ...> })
       {:ok,
        %{
-         1 => [
-           "CARTAS DE UM ESTOICO, Volume I",
-           "Montecristo Editora Ltda.\ne-mail: editora@montecristoeditora.com.br"
+         13 => [
+           "To Mrs. Saville, England.\nSt. Petersburgh, Dec. 11th, 17 —.",
+           "I am already far north of London; and as I walk in the streets of\nPetersburgh, I feel a cold northern breeze play upon my cheeks, which"
          ]
        }}
 
   """
-  def extract_text_from_binary(binary, pages \\ []) do
-    GenServer.call(__MODULE__, {:extract_text_from_binary, [binary, pages]})
+  def extract_text_from_binary(binary, pages \\ [], opts \\ []) do
+    %{timeout: timeout} = validate_opts!(opts)
+    GenServer.call(__MODULE__, {:extract_text_from_binary, [binary, pages]}, timeout)
   end
 
   @doc """
@@ -160,18 +190,13 @@ defmodule PdfExtractor do
 
   ## Examples
 
-      iex> PdfExtractor.extract_metadata("priv/fixtures/book.pdf")
-      {:ok,
-       %{
-         "CreationDate" => "D:20250718212328Z",
-         "Creator" => "Stirling-PDF v0.44.2",
-         "ModDate" => "D:20250718212328Z",
-         "Producer" => "Stirling-PDF v0.44.2"
-       }}
+      iex> PdfExtractor.extract_metadata("priv/fixtures/frankenstein-mary-shelley.pdf")
+      {:ok, %{"CreationDate" => "D:20260403141150", "Creator" => "PDFium", "Producer" => "PDFium"}}
 
   """
-  def extract_metadata(file_path) do
-    GenServer.call(__MODULE__, {:extract_metadata, [file_path]})
+  def extract_metadata(file_path, opts \\ []) do
+    %{timeout: timeout} = validate_opts!(opts)
+    GenServer.call(__MODULE__, {:extract_metadata, [file_path]}, timeout)
   end
 
   @doc """
@@ -180,19 +205,20 @@ defmodule PdfExtractor do
 
   ## Examples
 
-      iex> content = File.read!("priv/fixtures/book.pdf")
+      iex> content = File.read!("priv/fixtures/frankenstein-mary-shelley.pdf")
       ...> PdfExtractor.extract_metadata_from_binary(content)
-      {:ok,
-       %{
-         "CreationDate" => "D:20250718212328Z",
-         "Creator" => "Stirling-PDF v0.44.2",
-         "ModDate" => "D:20250718212328Z",
-         "Producer" => "Stirling-PDF v0.44.2"
-       }}
+      {:ok, %{"CreationDate" => "D:20260403141150", "Creator" => "PDFium", "Producer" => "PDFium"}}
 
   """
-  def extract_metadata_from_binary(binary) do
-    GenServer.call(__MODULE__, {:extract_metadata_from_binary, [binary]})
+  def extract_metadata_from_binary(binary, opts \\ []) do
+    %{timeout: timeout} = validate_opts!(opts)
+    GenServer.call(__MODULE__, {:extract_metadata_from_binary, [binary]}, timeout)
+  end
+
+  defp validate_opts!(opts) do
+    opts
+    |> Keyword.validate!(timeout: @default_timeout)
+    |> Map.new()
   end
 
   # Server
