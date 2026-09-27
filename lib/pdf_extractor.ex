@@ -246,6 +246,6 @@ defmodule PdfExtractor do
   def handle_call({function, args}, _from, state) when is_atom(function) and is_list(args) do
     {:reply, {:ok, apply(PdfExtractor.PdfPlumber, function, args)}, state}
   rescue
-    exception in Pythonx.Error -> {:reply, {:error, exception}, state}
+    exception -> {:reply, {:error, exception}, state}
   end
 end

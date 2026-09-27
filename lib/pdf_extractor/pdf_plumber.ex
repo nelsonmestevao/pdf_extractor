@@ -16,14 +16,14 @@ defmodule PdfExtractor.PdfPlumber do
           return page.within_bbox(areas).extract_text()
 
   def main(content, page_numbers, areas):
-      results = []
+      results = {}
       with pdfplumber.open(content) as pdf:
           total_pages = len(pdf.pages)
           if page_numbers == []:
             page_numbers = list(range(total_pages))
           for page_number in page_numbers:
             if page_number >= 0 and page_number < total_pages:
-              results.append(extract_from_page(pdf.pages[page_number], areas.get(page_number)))
+              results[page_number] = extract_from_page(pdf.pages[page_number], areas.get(page_number))
           return results
   """
 
@@ -113,7 +113,6 @@ defmodule PdfExtractor.PdfPlumber do
     |> Pythonx.eval(Map.merge(bindings, %{"page_numbers" => page_numbers, "areas" => areas}))
     |> elem(0)
     |> Pythonx.decode()
-    |> to_map(page_numbers)
   end
 
   def extract_metadata(file_path) do
@@ -142,18 +141,6 @@ defmodule PdfExtractor.PdfPlumber do
     })
     |> elem(0)
     |> Pythonx.decode()
-  end
-
-  defp to_map(texts, []) when is_list(texts) do
-    texts
-    |> Enum.with_index(&{&2, &1})
-    |> Map.new()
-  end
-
-  defp to_map(texts, page_numbers) when is_list(texts) do
-    page_numbers
-    |> Enum.zip(texts)
-    |> Map.new()
   end
 
   defp version do

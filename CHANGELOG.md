@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fix out-of-range page numbers shifting the extracted text onto the wrong pages
+- Return `{:error, exception}` for invalid arguments instead of crashing the server
+
 ## [0.6.0] - 2026-04-03
 
 - Add configurable `timeout` option to all extraction functions (default: 5000ms)

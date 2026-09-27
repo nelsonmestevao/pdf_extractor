@@ -107,6 +107,20 @@ defmodule PdfExtractorTest do
     test "pages outside the range are just ignored" do
       assert PdfExtractor.extract_text(@test_file_path, [999]) == {:ok, %{}}
     end
+
+    test "pages outside the range don't shift the remaining pages" do
+      assert PdfExtractor.extract_text(@test_file_path, [999, 1]) ==
+               {:ok, %{1 => @test_file_content[1]}}
+
+      assert PdfExtractor.extract_text(@test_file_path, %{-1 => nil, 0 => nil}) ==
+               {:ok, %{0 => @test_file_content[0]}}
+    end
+
+    test "returns error for invalid pages without crashing the server", %{pid: pid} do
+      assert {:error, %FunctionClauseError{}} = PdfExtractor.extract_text(@test_file_path, "0")
+      assert Process.alive?(pid)
+      assert PdfExtractor.extract_text(@test_file_path) == {:ok, @test_file_content}
+    end
   end
 
   describe "extract_text_from_binary/3" do
@@ -189,6 +203,18 @@ defmodule PdfExtractorTest do
       test_file_binary_content: test_file_binary_content
     } do
       assert PdfExtractor.extract_text_from_binary(test_file_binary_content, [999]) == {:ok, %{}}
+    end
+
+    test "pages outside the range don't shift the remaining pages", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.extract_text_from_binary(test_file_binary_content, [999, 1]) ==
+               {:ok, %{1 => @test_file_content[1]}}
+    end
+
+    test "returns error for invalid binary without crashing the server", %{pid: pid} do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_text_from_binary("not a pdf")
+      assert Process.alive?(pid)
     end
   end
 end
