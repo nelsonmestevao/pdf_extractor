@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-27
+
 - Fix out-of-range page numbers shifting the extracted text onto the wrong pages
 - Return `{:error, exception}` for invalid arguments instead of crashing the server
 
@@ -85,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pythonx ~> 0.4.0 for Python integration
 - Requires Python with pdfplumber package installed
 
-[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.4.1...v0.5.0
