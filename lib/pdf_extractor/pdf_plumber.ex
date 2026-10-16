@@ -45,7 +45,7 @@ defmodule PdfExtractor.PdfPlumber do
     version = "#{to_string(version())}"
     requires-python = "==3.12.*"
     dependencies = [
-      "pdfplumber==0.11.9"
+      "pdfplumber==0.11.10"
     ]
     """)
   end
