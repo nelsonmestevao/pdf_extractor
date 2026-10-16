@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-16
+
 - Upgrade Python to v3.14 and pin uv to v0.12.24 so recent CPython builds are available
 - Upgrade pdfplumber to v0.11.10 (bundles pdfminer.six 20260107)
 - Upgrade pythonx to v0.4.10
@@ -92,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pythonx ~> 0.4.0 for Python integration
 - Requires Python with pdfplumber package installed
 
-[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.0...v0.5.1
