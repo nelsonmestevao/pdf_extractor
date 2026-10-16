@@ -39,15 +39,18 @@ defmodule PdfExtractor.PdfPlumber do
   """
 
   def start do
-    Pythonx.uv_init("""
-    [project]
-    name = "pdf_extractor"
-    version = "#{to_string(version())}"
-    requires-python = "==3.12.*"
-    dependencies = [
-      "pdfplumber==0.11.10"
-    ]
-    """)
+    Pythonx.uv_init(
+      """
+      [project]
+      name = "pdf_extractor"
+      version = "#{to_string(version())}"
+      requires-python = "==3.14.*"
+      dependencies = [
+        "pdfplumber==0.11.10"
+      ]
+      """,
+      uv_version: "0.12.24"
+    )
   end
 
   @type area :: {non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()}

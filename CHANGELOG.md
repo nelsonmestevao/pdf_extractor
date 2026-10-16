@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Upgrade Python to v3.14 and pin uv to v0.12.24 so recent CPython builds are available
 - Upgrade pdfplumber to v0.11.10 (bundles pdfminer.six 20260107)
 - Upgrade pythonx to v0.4.10
 - Upgrade dev tooling: credo v1.7.19, dialyxir v1.4.8, ex_doc v0.40.4, styler v1.12.2
