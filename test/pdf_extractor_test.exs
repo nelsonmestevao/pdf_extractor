@@ -10,6 +10,7 @@ defmodule PdfExtractorTest do
   doctest PdfExtractor
 
   @test_file_path "priv/fixtures/fatura.pdf"
+  @encrypted_file_path "priv/fixtures/fatura-encrypted.pdf"
   @test_file_content %{
     0 =>
       "Text Example Bill FATURA\n# 2025010002\nData: Jun 21, 2025\nProjeto de lei para:\nSaldo devedor: 1 525,59 €\nElixir Company\nItem Quantidade Avaliar Quantia\nTrabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €\nSubtotal: 1 525,59 €\nImposto (0%): 0,00 €\nTotal: 1 525,59 €",
@@ -466,6 +467,62 @@ defmodule PdfExtractorTest do
     test "returns error for invalid binary without crashing the server", %{pid: pid} do
       assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_tables_from_binary("not a pdf")
       assert Process.alive?(pid)
+    end
+  end
+
+  describe "password option" do
+    test "returns error for an encrypted file without the right password" do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_text(@encrypted_file_path)
+
+      assert {:error, %Pythonx.Error{}} =
+               PdfExtractor.extract_text(@encrypted_file_path, [], password: "wrong")
+
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_words(@encrypted_file_path)
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_tables(@encrypted_file_path)
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_metadata(@encrypted_file_path)
+    end
+
+    test "opens an encrypted file with its password" do
+      assert PdfExtractor.extract_text(@encrypted_file_path, [], password: "secret") ==
+               {:ok, @test_file_content}
+
+      assert PdfExtractor.extract_words(@encrypted_file_path, 0, password: "secret") ==
+               PdfExtractor.extract_words(@test_file_path, 0)
+
+      assert PdfExtractor.extract_tables(@encrypted_file_path, [], password: "secret") ==
+               PdfExtractor.extract_tables(@test_file_path)
+
+      assert {:ok, %{"Producer" => _}} =
+               PdfExtractor.extract_metadata(@encrypted_file_path, password: "secret")
+    end
+
+    test "opens encrypted binary data with its password" do
+      content = File.read!(@encrypted_file_path)
+
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_text_from_binary(content)
+
+      assert PdfExtractor.extract_text_from_binary(content, [], password: "secret") ==
+               {:ok, @test_file_content}
+
+      assert PdfExtractor.extract_words_from_binary(content, 0, password: "secret") ==
+               PdfExtractor.extract_words(@test_file_path, 0)
+
+      assert PdfExtractor.extract_tables_from_binary(content, [], password: "secret") ==
+               PdfExtractor.extract_tables(@test_file_path)
+
+      assert {:ok, %{"Producer" => _}} =
+               PdfExtractor.extract_metadata_from_binary(content, password: "secret")
+    end
+
+    test "is ignored for files that are not encrypted" do
+      assert PdfExtractor.extract_text(@test_file_path, [], password: "anything") ==
+               {:ok, @test_file_content}
+    end
+
+    test "raises when password is not a string" do
+      assert_raise ArgumentError, ~r/expected :password to be a string or nil/, fn ->
+        PdfExtractor.extract_text(@test_file_path, [], password: :secret)
+      end
     end
   end
 end

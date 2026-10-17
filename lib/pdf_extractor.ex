@@ -45,6 +45,8 @@ defmodule PdfExtractor do
 
   - `:timeout` - timeout in milliseconds for the GenServer call (default: `#{@default_timeout}`)
   - `:name` - name or PID of the server to call (default: `PdfExtractor`)
+  - `:password` - the password of an encrypted PDF. Without it, or with a wrong one, extraction
+    returns an error (default: `nil`)
 
   `extract_text/3` and `extract_text_from_binary/3` also accept:
 
@@ -116,6 +118,13 @@ defmodule PdfExtractor do
            "“Did I request thee, Maker, from my clay\nTo mould me Man, did I solicit thee\nFrom darkness to promote me?”\nP L , X, 743 – 45\nARADISE OST"
        }}
 
+    Open an encrypted file with its password.
+
+      iex> PdfExtractor.extract_text("priv/fixtures/fatura-encrypted.pdf", %{0 => {0, 0, 300, 200}},
+      ...>   password: "secret"
+      ...> )
+      {:ok, %{0 => "Text Example Bill\nProjeto de lei para:\nElixir Company"}}
+
     Keep the layout of the page so the columns of a table stay aligned.
 
       iex> PdfExtractor.extract_text("priv/fixtures/fatura.pdf", %{0 => {0, 220, 595, 250}})
@@ -132,8 +141,14 @@ defmodule PdfExtractor do
 
   """
   def extract_text(file_path, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name, layout: layout} = validate_opts!(opts, layout: false)
-    GenServer.call(name, {:extract_text, [file_path, pages, %{layout: layout}]}, timeout)
+    %{timeout: timeout, name: name, layout: layout, password: password} =
+      validate_opts!(opts, layout: false)
+
+    GenServer.call(
+      name,
+      {:extract_text, [file_path, pages, %{layout: layout, password: password}]},
+      timeout
+    )
   end
 
   @doc ~S"""
@@ -204,11 +219,12 @@ defmodule PdfExtractor do
 
   """
   def extract_text_from_binary(binary, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name, layout: layout} = validate_opts!(opts, layout: false)
+    %{timeout: timeout, name: name, layout: layout, password: password} =
+      validate_opts!(opts, layout: false)
 
     GenServer.call(
       name,
-      {:extract_text_from_binary, [binary, pages, %{layout: layout}]},
+      {:extract_text_from_binary, [binary, pages, %{layout: layout, password: password}]},
       timeout
     )
   end
@@ -272,8 +288,8 @@ defmodule PdfExtractor do
 
   """
   def extract_words(file_path, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_words, [file_path, pages, %{}]}, timeout)
+    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+    GenServer.call(name, {:extract_words, [file_path, pages, %{password: password}]}, timeout)
   end
 
   @doc """
@@ -301,8 +317,13 @@ defmodule PdfExtractor do
 
   """
   def extract_words_from_binary(binary, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_words_from_binary, [binary, pages, %{}]}, timeout)
+    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+
+    GenServer.call(
+      name,
+      {:extract_words_from_binary, [binary, pages, %{password: password}]},
+      timeout
+    )
   end
 
   @doc """
@@ -359,7 +380,7 @@ defmodule PdfExtractor do
   """
   def extract_tables(file_path, pages \\ [], opts \\ []) do
     %{timeout: timeout, name: name} = opts = validate_opts!(opts, @table_defaults)
-    options = Map.take(opts, [:vertical_strategy, :horizontal_strategy])
+    options = Map.take(opts, [:vertical_strategy, :horizontal_strategy, :password])
     GenServer.call(name, {:extract_tables, [file_path, pages, options]}, timeout)
   end
 
@@ -376,7 +397,7 @@ defmodule PdfExtractor do
   """
   def extract_tables_from_binary(binary, pages \\ [], opts \\ []) do
     %{timeout: timeout, name: name} = opts = validate_opts!(opts, @table_defaults)
-    options = Map.take(opts, [:vertical_strategy, :horizontal_strategy])
+    options = Map.take(opts, [:vertical_strategy, :horizontal_strategy, :password])
     GenServer.call(name, {:extract_tables_from_binary, [binary, pages, options]}, timeout)
   end
 
@@ -390,8 +411,8 @@ defmodule PdfExtractor do
 
   """
   def extract_metadata(file_path, opts \\ []) do
-    %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_metadata, [file_path]}, timeout)
+    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+    GenServer.call(name, {:extract_metadata, [file_path, %{password: password}]}, timeout)
   end
 
   @doc """
@@ -406,16 +427,30 @@ defmodule PdfExtractor do
 
   """
   def extract_metadata_from_binary(binary, opts \\ []) do
-    %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_metadata_from_binary, [binary]}, timeout)
+    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+
+    GenServer.call(
+      name,
+      {:extract_metadata_from_binary, [binary, %{password: password}]},
+      timeout
+    )
   end
 
   defp validate_opts!(opts, extra_defaults \\ []) do
     opts =
-      Keyword.validate!(opts, [timeout: @default_timeout, name: __MODULE__] ++ extra_defaults)
+      Keyword.validate!(
+        opts,
+        [timeout: @default_timeout, name: __MODULE__, password: nil] ++ extra_defaults
+      )
 
     Enum.each(opts, &validate_opt!/1)
     Map.new(opts)
+  end
+
+  defp validate_opt!({:password, password}) when is_binary(password) or is_nil(password), do: :ok
+
+  defp validate_opt!({:password, password}) do
+    raise ArgumentError, "expected :password to be a string or nil, got: #{inspect(password)}"
   end
 
   defp validate_opt!({:layout, layout}) when is_boolean(layout), do: :ok

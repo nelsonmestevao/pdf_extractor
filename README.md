@@ -19,6 +19,7 @@ making it suitable for various use cases from local file processing to web-based
 - 📍 Area-based extraction using bounding boxes
 - 📐 Extract words together with their position on the page
 - 📋 Extract tables as rows of cells
+- 🔐 Open encrypted PDFs with a password
 - 🌐 Work with PDF data directly from memory (e.g., HTTP downloads)
 - 📊 Get PDF metadata like title, author, creation date
 - 🐍 Leverages Python's powerful `pdfplumber` library
@@ -90,6 +91,15 @@ Columns of statements and tables stay aligned instead of being flattened into si
 
 ```elixir
 PdfExtractor.extract_text("path/to/document.pdf", 0, layout: true)
+```
+
+### Encrypted Files
+
+Every function takes a `:password` option for encrypted PDFs. Without it, or with a wrong one,
+the function returns `{:error, exception}`:
+
+```elixir
+PdfExtractor.extract_text("path/to/document.pdf", [], password: "secret")
 ```
 
 ### Tables

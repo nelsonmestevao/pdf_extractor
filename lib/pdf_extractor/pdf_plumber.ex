@@ -1,59 +1,67 @@
 defmodule PdfExtractor.PdfPlumber do
   @moduledoc false
 
-  @python_extract_code """
+  # Shared by every Python snippet. Pythonx hands binaries to Python as bytes,
+  # so the password is decoded before reaching pdfplumber, which expects a str.
+  @python_prelude """
   import pdfplumber
   import logging
 
   logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
-  def extract_text(page, options):
-      return page.extract_text(layout=options["layout"])
+  def open_pdf(content, options):
+      password = options.get("password")
+      if password is not None:
+          password = password.decode("utf-8")
+      return pdfplumber.open(content, password=password)
 
-  def extract_words(page, options):
-      return [
-          (word["text"], float(word["x0"]), float(word["x1"]), float(word["top"]), float(word["bottom"]))
-          for word in page.extract_words()
-      ]
-
-  def extract_tables(page, options):
-      settings = {
-          "vertical_strategy": options["vertical_strategy"],
-          "horizontal_strategy": options["horizontal_strategy"],
-      }
-      return page.extract_tables(settings)
-
-  def extract_from_page(page, areas, extract, options):
-      if areas is None:
-          return extract(page, options)
-      elif isinstance(areas, list):
-          return [extract(page.within_bbox(area), options) for area in areas]
-      else:
-          return extract(page.within_bbox(areas), options)
-
-  def main(content, page_numbers, areas, extract, options):
-      results = {}
-      with pdfplumber.open(content) as pdf:
-          total_pages = len(pdf.pages)
-          if page_numbers == []:
-              page_numbers = list(range(total_pages))
-          for page_number in page_numbers:
-              if page_number >= 0 and page_number < total_pages:
-                  page = pdf.pages[page_number]
-                  results[page_number] = extract_from_page(page, areas.get(page_number), extract, options)
-      return results
   """
 
-  @python_extract_metadata_code """
-  import pdfplumber
-  import logging
+  @python_extract_code @python_prelude <>
+                         """
+                         def extract_text(page, options):
+                             return page.extract_text(layout=options["layout"])
 
-  logging.getLogger("pdfminer").setLevel(logging.ERROR)
+                         def extract_words(page, options):
+                             return [
+                                 (word["text"], float(word["x0"]), float(word["x1"]), float(word["top"]), float(word["bottom"]))
+                                 for word in page.extract_words()
+                             ]
 
-  def main(content):
-      with pdfplumber.open(content) as pdf:
-        return pdf.metadata
-  """
+                         def extract_tables(page, options):
+                             settings = {
+                                 "vertical_strategy": options["vertical_strategy"],
+                                 "horizontal_strategy": options["horizontal_strategy"],
+                             }
+                             return page.extract_tables(settings)
+
+                         def extract_from_page(page, areas, extract, options):
+                             if areas is None:
+                                 return extract(page, options)
+                             elif isinstance(areas, list):
+                                 return [extract(page.within_bbox(area), options) for area in areas]
+                             else:
+                                 return extract(page.within_bbox(areas), options)
+
+                         def main(content, page_numbers, areas, extract, options):
+                             results = {}
+                             with open_pdf(content, options) as pdf:
+                                 total_pages = len(pdf.pages)
+                                 if page_numbers == []:
+                                     page_numbers = list(range(total_pages))
+                                 for page_number in page_numbers:
+                                     if page_number >= 0 and page_number < total_pages:
+                                         page = pdf.pages[page_number]
+                                         results[page_number] = extract_from_page(page, areas.get(page_number), extract, options)
+                             return results
+                         """
+
+  @python_extract_metadata_code @python_prelude <>
+                                  """
+                                  def main(content, options):
+                                      with open_pdf(content, options) as pdf:
+                                          return pdf.metadata
+                                  """
 
   def start do
     Pythonx.uv_init(
@@ -74,11 +82,13 @@ defmodule PdfExtractor.PdfPlumber do
   @type page :: non_neg_integer()
   @type pages :: page() | list(page()) | %{page() => area() | [area()] | nil}
   @type word :: %{text: String.t(), left: float(), right: float(), top: float(), bottom: float()}
-  @type text_options :: %{layout: boolean()}
+  @type options :: %{password: String.t() | nil}
+  @type text_options :: %{layout: boolean(), password: String.t() | nil}
   @type table_strategy :: :lines | :lines_strict | :text
   @type table_options :: %{
           vertical_strategy: table_strategy(),
-          horizontal_strategy: table_strategy()
+          horizontal_strategy: table_strategy(),
+          password: String.t() | nil
         }
   @type table :: list(list(String.t() | nil))
 
@@ -119,7 +129,7 @@ defmodule PdfExtractor.PdfPlumber do
     )
   end
 
-  @spec extract_words(file_path :: String.t(), pages(), map()) ::
+  @spec extract_words(file_path :: String.t(), pages(), options()) ::
           %{page() => list(word()) | list(list(word()))}
   def extract_words(file_path, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
@@ -129,7 +139,7 @@ defmodule PdfExtractor.PdfPlumber do
     |> decode_words()
   end
 
-  @spec extract_words_from_binary(binary(), pages(), map()) ::
+  @spec extract_words_from_binary(binary(), pages(), options()) ::
           %{page() => list(word()) | list(list(word()))}
   def extract_words_from_binary(binary, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
@@ -213,30 +223,28 @@ defmodule PdfExtractor.PdfPlumber do
 
   defp decode_word(words) when is_list(words), do: Enum.map(words, &decode_word/1)
 
-  def extract_metadata(file_path) do
+  @spec extract_metadata(file_path :: String.t(), options()) :: %{String.t() => term()}
+  def extract_metadata(file_path, options) do
     """
     #{@python_extract_metadata_code}
 
-    main(file_path.decode('utf-8'))
+    main(file_path.decode('utf-8'), options)
     """
-    |> Pythonx.eval(%{
-      "file_path" => file_path
-    })
+    |> Pythonx.eval(%{"file_path" => file_path, "options" => options})
     |> elem(0)
     |> Pythonx.decode()
   end
 
-  def extract_metadata_from_binary(binary) do
+  @spec extract_metadata_from_binary(binary(), options()) :: %{String.t() => term()}
+  def extract_metadata_from_binary(binary, options) do
     """
     from io import BytesIO
 
     #{@python_extract_metadata_code}
 
-    main(BytesIO(binary))
+    main(BytesIO(binary), options)
     """
-    |> Pythonx.eval(%{
-      "binary" => binary
-    })
+    |> Pythonx.eval(%{"binary" => binary, "options" => options})
     |> elem(0)
     |> Pythonx.decode()
   end
