@@ -6,6 +6,7 @@ defmodule PdfExtractor.PdfPlumber do
   @python_prelude """
   import pdfplumber
   import logging
+  import re
 
   logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
@@ -22,10 +23,19 @@ defmodule PdfExtractor.PdfPlumber do
       return page.extract_text(layout=options["layout"])
 
   def extract_words(page, options):
+      if options["font"]:
+          return [
+              (word["text"], float(word["x0"]), float(word["x1"]), float(word["top"]), float(word["bottom"]), font_name(word["fontname"]), float(word["size"]))
+              for word in page.extract_words(extra_attrs=["fontname", "size"])
+          ]
       return [
           (word["text"], float(word["x0"]), float(word["x1"]), float(word["top"]), float(word["bottom"]))
           for word in page.extract_words()
       ]
+
+  def font_name(name):
+      # Embedded fonts carry a subset tag, such as "ABCDEF+Helvetica-Bold".
+      return re.sub(r"^[A-Z]{6}[+]", "", name)
 
   def extract_tables(page, options):
       settings = {
@@ -85,7 +95,16 @@ defmodule PdfExtractor.PdfPlumber do
   @type area :: {non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()}
   @type page :: non_neg_integer()
   @type pages :: page() | list(page()) | %{page() => area() | [area()] | nil}
-  @type word :: %{text: String.t(), left: float(), right: float(), top: float(), bottom: float()}
+  @type word :: %{
+          required(:text) => String.t(),
+          required(:left) => float(),
+          required(:right) => float(),
+          required(:top) => float(),
+          required(:bottom) => float(),
+          optional(:font_name) => String.t(),
+          optional(:font_size) => float()
+        }
+  @type word_options :: %{font: boolean(), password: String.t() | nil}
   @type options :: %{password: String.t() | nil}
   @type page_info :: %{width: float(), height: float(), rotation: 0 | 90 | 180 | 270}
   @type text_options :: %{layout: boolean(), password: String.t() | nil}
@@ -140,7 +159,7 @@ defmodule PdfExtractor.PdfPlumber do
     )
   end
 
-  @spec extract_words(file_path :: String.t(), pages(), options()) ::
+  @spec extract_words(file_path :: String.t(), pages(), word_options()) ::
           %{page() => list(word()) | list(list(word()))}
   def extract_words(file_path, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
@@ -150,7 +169,7 @@ defmodule PdfExtractor.PdfPlumber do
     |> decode_pages(&decode_word/1)
   end
 
-  @spec extract_words_from_binary(binary(), pages(), options()) ::
+  @spec extract_words_from_binary(binary(), pages(), word_options()) ::
           %{page() => list(word()) | list(list(word()))}
   def extract_words_from_binary(binary, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
@@ -259,6 +278,18 @@ defmodule PdfExtractor.PdfPlumber do
 
   defp decode_word({text, left, right, top, bottom}) do
     %{text: text, left: left, right: right, top: top, bottom: bottom}
+  end
+
+  defp decode_word({text, left, right, top, bottom, font_name, font_size}) do
+    %{
+      text: text,
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
+      font_name: font_name,
+      font_size: font_size
+    }
   end
 
   defp decode_table({rows, left, top, right, bottom}) do

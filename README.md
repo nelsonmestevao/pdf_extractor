@@ -155,6 +155,14 @@ PdfExtractor.extract_words("path/to/document.pdf", 0)
 #  }}
 ```
 
+Pass `font: true` to also get the `font_name` and `font_size` of each word, which tells headings
+from body text:
+
+```elixir
+PdfExtractor.extract_words("path/to/document.pdf", 0, font: true)
+# {:ok, %{0 => [%{text: "Text", font_name: "NimbusSans-Bold", font_size: 9.75, ...}, ...]}}
+```
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

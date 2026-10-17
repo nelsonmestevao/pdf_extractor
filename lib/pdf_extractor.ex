@@ -238,6 +238,14 @@ defmodule PdfExtractor do
 
   See `extract_text/3` for details on how to specify pages, areas, and options.
 
+  ## Options
+
+  Besides `:timeout`, `:name` and `:password`, this function accepts:
+
+  - `:font` - when `true`, adds the `:font_name` and `:font_size` of each word. The subset tag that
+    PDFs prepend to the names of embedded fonts, such as `ABCDEF+`, is removed. A word written in
+    more than one font is split where the font changes (default: `false`)
+
   ## Examples
 
     Extract the words of a single page.
@@ -286,10 +294,38 @@ defmodule PdfExtractor do
          ]
        }}
 
+    Get the font of each word to tell headings from body text.
+
+      iex> PdfExtractor.extract_words(
+      ...>   "priv/fixtures/frankenstein-mary-shelley.pdf",
+      ...>   %{
+      ...>     1 => {0, 0, 612, 190}
+      ...>   }, font: true)
+      {:ok,
+       %{
+         1 => [
+           %{
+             text: "Frankenstein",
+             left: 76.99218429199217,
+             right: 177.95707306012164,
+             top: 102.2249957406251,
+             bottom: 132.22499449062502,
+             font_name: "LeagueGothic-Regular",
+             font_size: 29.999998749999918
+           }
+         ]
+       }}
+
   """
   def extract_words(file_path, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
-    GenServer.call(name, {:extract_words, [file_path, pages, %{password: password}]}, timeout)
+    %{timeout: timeout, name: name, password: password, font: font} =
+      validate_opts!(opts, font: false)
+
+    GenServer.call(
+      name,
+      {:extract_words, [file_path, pages, %{password: password, font: font}]},
+      timeout
+    )
   end
 
   @doc """
@@ -317,11 +353,12 @@ defmodule PdfExtractor do
 
   """
   def extract_words_from_binary(binary, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+    %{timeout: timeout, name: name, password: password, font: font} =
+      validate_opts!(opts, font: false)
 
     GenServer.call(
       name,
-      {:extract_words_from_binary, [binary, pages, %{password: password}]},
+      {:extract_words_from_binary, [binary, pages, %{password: password, font: font}]},
       timeout
     )
   end
@@ -550,6 +587,12 @@ defmodule PdfExtractor do
 
   defp validate_opt!({:password, password}) do
     raise ArgumentError, "expected :password to be a string or nil, got: #{inspect(password)}"
+  end
+
+  defp validate_opt!({:font, font}) when is_boolean(font), do: :ok
+
+  defp validate_opt!({:font, font}) do
+    raise ArgumentError, "expected :font to be a boolean, got: #{inspect(font)}"
   end
 
   defp validate_opt!({:layout, layout}) when is_boolean(layout), do: :ok

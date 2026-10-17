@@ -316,6 +316,34 @@ defmodule PdfExtractorTest do
       assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_words("non_existent_file.pdf")
     end
 
+    test "adds the font of each word when font is true" do
+      area = %{0 => {0, 0, 300, 200}}
+
+      assert {:ok, %{0 => words}} = PdfExtractor.extract_words(@test_file_path, area, font: true)
+
+      assert Enum.map(words, &{&1.text, &1.font_name, &1.font_size}) == [
+               {"Text", "NimbusSans-Bold", 9.75},
+               {"Example", "NimbusSans-Bold", 9.75},
+               {"Bill", "NimbusSans-Bold", 9.75},
+               {"Projeto", "NimbusSans-Regular", 9.75},
+               {"de", "NimbusSans-Regular", 9.75},
+               {"lei", "NimbusSans-Regular", 9.75},
+               {"para:", "NimbusSans-Regular", 9.75},
+               {"Elixir", "NimbusSans-Bold", 9.75},
+               {"Company", "NimbusSans-Bold", 9.75}
+             ]
+
+      assert {:ok, %{0 => plain_words}} = PdfExtractor.extract_words(@test_file_path, area)
+      refute Enum.any?(plain_words, &Map.has_key?(&1, :font_name))
+      assert Enum.map(words, &Map.drop(&1, [:font_name, :font_size])) == plain_words
+    end
+
+    test "raises when font is not a boolean" do
+      assert_raise ArgumentError, ~r/expected :font to be a boolean/, fn ->
+        PdfExtractor.extract_words(@test_file_path, [], font: "yes")
+      end
+    end
+
     test "returns error for invalid pages without crashing the server", %{pid: pid} do
       assert {:error, %FunctionClauseError{}} = PdfExtractor.extract_words(@test_file_path, "0")
       assert Process.alive?(pid)
@@ -360,6 +388,15 @@ defmodule PdfExtractorTest do
     } do
       assert PdfExtractor.extract_words_from_binary(test_file_binary_content, [999]) ==
                {:ok, %{}}
+    end
+
+    test "adds the font of each word when font is true", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      area = %{0 => {0, 0, 300, 200}}
+
+      assert PdfExtractor.extract_words_from_binary(test_file_binary_content, area, font: true) ==
+               PdfExtractor.extract_words(@test_file_path, area, font: true)
     end
 
     test "returns error for invalid binary without crashing the server", %{pid: pid} do

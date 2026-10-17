@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `extract_tables/3` and `extract_tables_from_binary/3` to get the rows and bounding box of each table, with `vertical_strategy` and `horizontal_strategy` options
 - Add `password` option to every function to open encrypted PDFs
 - Add `extract_page_info/3` and `extract_page_info_from_binary/3` to get the number of pages and the size and rotation of each one
+- Add `font: true` option to `extract_words/3` and `extract_words_from_binary/3` to get the font name and size of each word
 
 ## [0.8.0] - 2026-10-16
 
