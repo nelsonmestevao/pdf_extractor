@@ -7,15 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Breaking:** `extract_tables/3` and `extract_tables_from_binary/3` return each table as a map with its `rows` and the `left`, `right`, `top` and `bottom` edges of its bounding box, instead of only the rows
+- Add `extract_page_info/3` and `extract_page_info_from_binary/3` to get the number of pages and the size and rotation of each one
+- Add `font: true` option to `extract_words/3` and `extract_words_from_binary/3` to get the font name and size of each word
+- Add `render_pages/3` and `render_pages_from_binary/3` to render pages or areas to PNG images
+
 ## [0.9.0] - 2026-10-17
 
 - Add `extract_words/3` and `extract_words_from_binary/3` to get every word with its bounding box on the page
 - Add `layout: true` option to `extract_text/3` and `extract_text_from_binary/3` to keep the position of the text on the page
-- Add `extract_tables/3` and `extract_tables_from_binary/3` to get the rows and bounding box of each table, with `vertical_strategy` and `horizontal_strategy` options
+- Add `extract_tables/3` and `extract_tables_from_binary/3` with `vertical_strategy` and `horizontal_strategy` options
 - Add `password` option to every function to open encrypted PDFs
-- Add `extract_page_info/3` and `extract_page_info_from_binary/3` to get the number of pages and the size and rotation of each one
-- Add `font: true` option to `extract_words/3` and `extract_words_from_binary/3` to get the font name and size of each word
-- Add `render_pages/3` and `render_pages_from_binary/3` to render pages or areas to PNG images
 
 ## [0.8.0] - 2026-10-16
 
