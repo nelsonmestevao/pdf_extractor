@@ -17,6 +17,8 @@ defmodule PdfExtractorTest do
       "✂\nReceipt Payment part Account / Payable to\nCH4431999123000889012\n✂\nMax Muster & Söhne\nAccount / Payable to\nCH4431999123000889012 Musterstrasse 123\nMax Muster & Söhne 8000 Seldwyla\nMusterstrasse 123\n8000 Seldwyla\nReference\n210000000003139471430009017\nReference\n210000000003139471430009017\nAdditional information\nBestellung vom 15.10.2020\nPayable by (name/address)\nSimon Muster\nPayable by (name/address)\nMusterstrasse 1\nCurrency Amount\nSimon Muster\n8000 Seldwyla\nCHF 1 949.75 Musterstrasse 1\n8000 Seldwyla\nCurrency Amount\nCHF 1 949.75\nAcceptance point"
   }
 
+  @table_rows_with_layout "      Trabalho                                     1          1 500,00 € 1 500,00 €\n      Mais trabalho                                1            25,59 €   25,59 € "
+
   test "start_link/1 has default values for options and can be restarted", %{pid: pid} do
     assert PdfExtractor.start_link() == {:error, {:already_started, pid}}
 
@@ -121,6 +123,22 @@ defmodule PdfExtractorTest do
       assert Process.alive?(pid)
       assert PdfExtractor.extract_text(@test_file_path) == {:ok, @test_file_content}
     end
+
+    test "keeps the position of the text on the page when layout is true" do
+      area = %{0 => {0, 220, 595, 250}}
+
+      assert PdfExtractor.extract_text(@test_file_path, area, layout: true) ==
+               {:ok, %{0 => @table_rows_with_layout}}
+
+      assert PdfExtractor.extract_text(@test_file_path, area, layout: false) ==
+               PdfExtractor.extract_text(@test_file_path, area)
+    end
+
+    test "raises when layout is not a boolean" do
+      assert_raise ArgumentError, ~r/expected :layout to be a boolean/, fn ->
+        PdfExtractor.extract_text(@test_file_path, [], layout: "yes")
+      end
+    end
   end
 
   describe "extract_text_from_binary/3" do
@@ -215,6 +233,15 @@ defmodule PdfExtractorTest do
     test "returns error for invalid binary without crashing the server", %{pid: pid} do
       assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_text_from_binary("not a pdf")
       assert Process.alive?(pid)
+    end
+
+    test "keeps the position of the text on the page when layout is true", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      area = %{0 => {0, 220, 595, 250}}
+
+      assert PdfExtractor.extract_text_from_binary(test_file_binary_content, area, layout: true) ==
+               {:ok, %{0 => @table_rows_with_layout}}
     end
   end
 

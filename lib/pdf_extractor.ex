@@ -39,10 +39,16 @@ defmodule PdfExtractor do
 
   ## Options
 
-  All extraction functions accept the same options:
+  All extraction functions accept these options:
 
   - `:timeout` - timeout in milliseconds for the GenServer call (default: `#{@default_timeout}`)
   - `:name` - name or PID of the server to call (default: `PdfExtractor`)
+
+  `extract_text/3` and `extract_text_from_binary/3` also accept:
+
+  - `:layout` - when `true`, keeps the position of the text on the page by padding it with spaces
+    and blank lines, so columns stay aligned. Useful for statements and tables that the default
+    extraction flattens into single lines (default: `false`)
 
   ## Examples
 
@@ -108,10 +114,24 @@ defmodule PdfExtractor do
            "“Did I request thee, Maker, from my clay\nTo mould me Man, did I solicit thee\nFrom darkness to promote me?”\nP L , X, 743 – 45\nARADISE OST"
        }}
 
+    Keep the layout of the page so the columns of a table stay aligned.
+
+      iex> PdfExtractor.extract_text("priv/fixtures/fatura.pdf", %{0 => {0, 220, 595, 250}})
+      {:ok, %{0 => "Trabalho 1 1 500,00 € 1 500,00 €\nMais trabalho 1 25,59 € 25,59 €"}}
+
+      iex> PdfExtractor.extract_text("priv/fixtures/fatura.pdf", %{0 => {0, 220, 595, 250}},
+      ...>   layout: true
+      ...> )
+      {:ok,
+       %{
+         0 =>
+           "      Trabalho                                     1          1 500,00 € 1 500,00 €\n      Mais trabalho                                1            25,59 €   25,59 € "
+       }}
+
   """
   def extract_text(file_path, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_text, [file_path, pages]}, timeout)
+    %{timeout: timeout, name: name, layout: layout} = validate_opts!(opts, layout: false)
+    GenServer.call(name, {:extract_text, [file_path, pages, %{layout: layout}]}, timeout)
   end
 
   @doc ~S"""
@@ -182,8 +202,13 @@ defmodule PdfExtractor do
 
   """
   def extract_text_from_binary(binary, pages \\ [], opts \\ []) do
-    %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_text_from_binary, [binary, pages]}, timeout)
+    %{timeout: timeout, name: name, layout: layout} = validate_opts!(opts, layout: false)
+
+    GenServer.call(
+      name,
+      {:extract_text_from_binary, [binary, pages, %{layout: layout}]},
+      timeout
+    )
   end
 
   @doc """
@@ -246,7 +271,7 @@ defmodule PdfExtractor do
   """
   def extract_words(file_path, pages \\ [], opts \\ []) do
     %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_words, [file_path, pages]}, timeout)
+    GenServer.call(name, {:extract_words, [file_path, pages, %{}]}, timeout)
   end
 
   @doc """
@@ -275,7 +300,7 @@ defmodule PdfExtractor do
   """
   def extract_words_from_binary(binary, pages \\ [], opts \\ []) do
     %{timeout: timeout, name: name} = validate_opts!(opts)
-    GenServer.call(name, {:extract_words_from_binary, [binary, pages]}, timeout)
+    GenServer.call(name, {:extract_words_from_binary, [binary, pages, %{}]}, timeout)
   end
 
   @doc """
@@ -308,11 +333,21 @@ defmodule PdfExtractor do
     GenServer.call(name, {:extract_metadata_from_binary, [binary]}, timeout)
   end
 
-  defp validate_opts!(opts) do
-    opts
-    |> Keyword.validate!(timeout: @default_timeout, name: __MODULE__)
-    |> Map.new()
+  defp validate_opts!(opts, extra_defaults \\ []) do
+    opts =
+      Keyword.validate!(opts, [timeout: @default_timeout, name: __MODULE__] ++ extra_defaults)
+
+    Enum.each(opts, &validate_opt!/1)
+    Map.new(opts)
   end
+
+  defp validate_opt!({:layout, layout}) when is_boolean(layout), do: :ok
+
+  defp validate_opt!({:layout, layout}) do
+    raise ArgumentError, "expected :layout to be a boolean, got: #{inspect(layout)}"
+  end
+
+  defp validate_opt!(_other), do: :ok
 
   # Server
 

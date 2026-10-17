@@ -7,24 +7,24 @@ defmodule PdfExtractor.PdfPlumber do
 
   logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
-  def extract_text(page):
-      return page.extract_text()
+  def extract_text(page, options):
+      return page.extract_text(layout=options["layout"])
 
-  def extract_words(page):
+  def extract_words(page, options):
       return [
           (word["text"], float(word["x0"]), float(word["x1"]), float(word["top"]), float(word["bottom"]))
           for word in page.extract_words()
       ]
 
-  def extract_from_page(page, areas, extract):
+  def extract_from_page(page, areas, extract, options):
       if areas is None:
-          return extract(page)
+          return extract(page, options)
       elif isinstance(areas, list):
-          return [extract(page.within_bbox(area)) for area in areas]
+          return [extract(page.within_bbox(area), options) for area in areas]
       else:
-          return extract(page.within_bbox(areas))
+          return extract(page.within_bbox(areas), options)
 
-  def main(content, page_numbers, areas, extract):
+  def main(content, page_numbers, areas, extract, options):
       results = {}
       with pdfplumber.open(content) as pdf:
           total_pages = len(pdf.pages)
@@ -32,7 +32,8 @@ defmodule PdfExtractor.PdfPlumber do
               page_numbers = list(range(total_pages))
           for page_number in page_numbers:
               if page_number >= 0 and page_number < total_pages:
-                  results[page_number] = extract_from_page(pdf.pages[page_number], areas.get(page_number), extract)
+                  page = pdf.pages[page_number]
+                  results[page_number] = extract_from_page(page, areas.get(page_number), extract, options)
       return results
   """
 
@@ -66,10 +67,11 @@ defmodule PdfExtractor.PdfPlumber do
   @type page :: non_neg_integer()
   @type pages :: page() | list(page()) | %{page() => area() | [area()] | nil}
   @type word :: %{text: String.t(), left: float(), right: float(), top: float(), bottom: float()}
+  @type text_options :: %{layout: boolean()}
 
-  @spec extract_text(file_path :: String.t(), pages()) ::
+  @spec extract_text(file_path :: String.t(), pages(), text_options()) ::
           %{page() => String.t() | list(String.t())}
-  def extract_text(file_path, pages) do
+  def extract_text(file_path, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
 
     extract(
@@ -77,7 +79,8 @@ defmodule PdfExtractor.PdfPlumber do
       %{"file_path" => file_path},
       page_numbers,
       areas,
-      "extract_text"
+      "extract_text",
+      options
     )
   end
 
@@ -87,9 +90,9 @@ defmodule PdfExtractor.PdfPlumber do
     url = "https://erlang.org/download/armstrong_thesis_2003.pdf"
     url |> :httpc.request() |> elem(1) |> elem(2) |> :binary.list_to_bin() |> PdfExtractor.extract_text_from_binary()
   """
-  @spec extract_text_from_binary(binary(), pages()) ::
+  @spec extract_text_from_binary(binary(), pages(), text_options()) ::
           %{page() => String.t() | list(String.t())}
-  def extract_text_from_binary(binary, pages) do
+  def extract_text_from_binary(binary, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
 
     extract(
@@ -98,23 +101,24 @@ defmodule PdfExtractor.PdfPlumber do
       page_numbers,
       areas,
       "extract_text",
+      options,
       "from io import BytesIO\n"
     )
   end
 
-  @spec extract_words(file_path :: String.t(), pages()) ::
+  @spec extract_words(file_path :: String.t(), pages(), map()) ::
           %{page() => list(word()) | list(list(word()))}
-  def extract_words(file_path, pages) do
+  def extract_words(file_path, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
 
     "file_path.decode('utf-8')"
-    |> extract(%{"file_path" => file_path}, page_numbers, areas, "extract_words")
+    |> extract(%{"file_path" => file_path}, page_numbers, areas, "extract_words", options)
     |> decode_words()
   end
 
-  @spec extract_words_from_binary(binary(), pages()) ::
+  @spec extract_words_from_binary(binary(), pages(), map()) ::
           %{page() => list(word()) | list(list(word()))}
-  def extract_words_from_binary(binary, pages) do
+  def extract_words_from_binary(binary, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
 
     "BytesIO(binary)"
@@ -123,6 +127,7 @@ defmodule PdfExtractor.PdfPlumber do
       page_numbers,
       areas,
       "extract_words",
+      options,
       "from io import BytesIO\n"
     )
     |> decode_words()
@@ -132,13 +137,22 @@ defmodule PdfExtractor.PdfPlumber do
   defp normalize_pages(pages) when is_list(pages), do: {pages, %{}}
   defp normalize_pages(pages) when is_map(pages), do: {Map.keys(pages), pages}
 
-  defp extract(content_expr, bindings, page_numbers, areas, extractor, preamble \\ "") do
+  # `options` must use atom keys: Pythonx turns atoms into Python strings but
+  # binaries into bytes, so string keys would not be readable as `options["key"]`.
+  defp extract(content_expr, bindings, page_numbers, areas, extractor, options, preamble \\ "") do
+    globals =
+      Map.merge(bindings, %{
+        "page_numbers" => page_numbers,
+        "areas" => areas,
+        "options" => options
+      })
+
     """
     #{preamble}#{@python_extract_code}
 
-    main(#{content_expr}, page_numbers, areas, #{extractor})
+    main(#{content_expr}, page_numbers, areas, #{extractor}, options)
     """
-    |> Pythonx.eval(Map.merge(bindings, %{"page_numbers" => page_numbers, "areas" => areas}))
+    |> Pythonx.eval(globals)
     |> elem(0)
     |> Pythonx.decode()
   end

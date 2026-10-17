@@ -82,6 +82,15 @@ The function returns a map where keys are page numbers and values are the extrac
 }
 ```
 
+### Keeping the Layout
+
+Pass `layout: true` to pad the text with spaces and blank lines so it keeps its position on the page.
+Columns of statements and tables stay aligned instead of being flattened into single lines:
+
+```elixir
+PdfExtractor.extract_text("path/to/document.pdf", 0, layout: true)
+```
+
 ### Words With Positions
 
 Use `extract_words/3` to get every word with its bounding box in PDF points, measured from the top left
