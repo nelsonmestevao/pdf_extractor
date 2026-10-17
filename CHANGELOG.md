@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-17
+
 - **Breaking:** `extract_tables/3` and `extract_tables_from_binary/3` return each table as a map with its `rows` and the `left`, `right`, `top` and `bottom` edges of its bounding box, instead of only the rows
 - Add `extract_page_info/3` and `extract_page_info_from_binary/3` to get the number of pages and the size and rotation of each one
 - Add `font: true` option to `extract_words/3` and `extract_words_from_binary/3` to get the font name and size of each word
@@ -106,7 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pythonx ~> 0.4.0 for Python integration
 - Requires Python with pdfplumber package installed
 
-[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.6.0...v0.7.0
