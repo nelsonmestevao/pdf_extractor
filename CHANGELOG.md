@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-17
+
 - Add `extract_words/3` and `extract_words_from_binary/3` to get every word with its bounding box on the page
 - Add `layout: true` option to `extract_text/3` and `extract_text_from_binary/3` to keep the position of the text on the page
 - Add `extract_tables/3` and `extract_tables_from_binary/3` with `vertical_strategy` and `horizontal_strategy` options
@@ -99,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pythonx ~> 0.4.0 for Python integration
 - Requires Python with pdfplumber package installed
 
-[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.5.1...v0.6.0
