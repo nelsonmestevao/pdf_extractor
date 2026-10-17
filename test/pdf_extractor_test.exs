@@ -470,6 +470,65 @@ defmodule PdfExtractorTest do
     end
   end
 
+  describe "extract_page_info/3" do
+    @page_info %{
+      0 => %{width: 612.0, height: 792.0, rotation: 0},
+      1 => %{width: 595.2756, height: 841.8898, rotation: 0}
+    }
+
+    test "extracts the size of all pages when no page numbers specified" do
+      assert PdfExtractor.extract_page_info(@test_file_path) == {:ok, @page_info}
+      assert PdfExtractor.extract_page_info(@test_file_path, []) == {:ok, @page_info}
+    end
+
+    test "extracts the size of the requested pages" do
+      assert PdfExtractor.extract_page_info(@test_file_path, 1) == {:ok, Map.take(@page_info, [1])}
+
+      assert PdfExtractor.extract_page_info(@test_file_path, [1, 0]) == {:ok, @page_info}
+    end
+
+    test "pages outside the range are just ignored" do
+      assert PdfExtractor.extract_page_info(@test_file_path, [999]) == {:ok, %{}}
+    end
+
+    test "returns error for areas since they do not apply", %{pid: pid} do
+      assert {:error, %FunctionClauseError{}} =
+               PdfExtractor.extract_page_info(@test_file_path, %{0 => {0, 0, 100, 100}})
+
+      assert Process.alive?(pid)
+    end
+
+    test "returns error for non-existent file" do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_page_info("non_existent_file.pdf")
+    end
+
+    test "opens an encrypted file with its password" do
+      assert PdfExtractor.extract_page_info(@encrypted_file_path, [], password: "secret") ==
+               {:ok, @page_info}
+    end
+  end
+
+  describe "extract_page_info_from_binary/3" do
+    setup do
+      [test_file_binary_content: File.read!(@test_file_path)]
+    end
+
+    test "extracts the same page info as the file based function", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.extract_page_info_from_binary(test_file_binary_content) ==
+               PdfExtractor.extract_page_info(@test_file_path)
+
+      assert PdfExtractor.extract_page_info_from_binary(test_file_binary_content, 0) ==
+               PdfExtractor.extract_page_info(@test_file_path, 0)
+    end
+
+    test "returns error for invalid binary without crashing the server", %{pid: pid} do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_page_info_from_binary("not a pdf")
+      assert Process.alive?(pid)
+    end
+  end
+
   describe "password option" do
     test "returns error for an encrypted file without the right password" do
       assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_text(@encrypted_file_path)

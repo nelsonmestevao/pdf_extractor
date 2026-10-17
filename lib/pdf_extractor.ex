@@ -402,6 +402,62 @@ defmodule PdfExtractor do
   end
 
   @doc """
+  Extracts the size and rotation of PDF pages.
+
+  Each page maps to its `:width` and `:height` in PDF points and its `:rotation` in degrees, one of
+  `0`, `90`, `180` or `270`. The sizes are the frame used by the areas of the other functions, so read
+  them before choosing a bounding box. When all pages are requested, the size of the map is the
+  number of pages of the document.
+
+  Pages are an integer or a list of page numbers as in `extract_text/3`. Areas do not apply here.
+  Accepts the `:timeout`, `:name` and `:password` options.
+
+  ## Examples
+
+    Get the size of every page.
+
+      iex> PdfExtractor.extract_page_info("priv/fixtures/fatura.pdf")
+      {:ok,
+       %{
+         0 => %{width: 612.0, height: 792.0, rotation: 0},
+         1 => %{width: 595.2756, height: 841.8898, rotation: 0}
+       }}
+
+    Count the pages of a document.
+
+      iex> {:ok, pages} =
+      ...>   PdfExtractor.extract_page_info("priv/fixtures/frankenstein-mary-shelley.pdf")
+      ...>
+      ...> map_size(pages)
+      17
+
+  """
+  def extract_page_info(file_path, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+    GenServer.call(name, {:extract_page_info, [file_path, pages, %{password: password}]}, timeout)
+  end
+
+  @doc """
+  Extracts the size and rotation of pages from PDF binary data. See `extract_page_info/3` for details.
+
+  ## Examples
+
+      iex> content = File.read!("priv/fixtures/fatura.pdf")
+      ...> PdfExtractor.extract_page_info_from_binary(content, 1)
+      {:ok, %{1 => %{width: 595.2756, height: 841.8898, rotation: 0}}}
+
+  """
+  def extract_page_info_from_binary(binary, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name, password: password} = validate_opts!(opts)
+
+    GenServer.call(
+      name,
+      {:extract_page_info_from_binary, [binary, pages, %{password: password}]},
+      timeout
+    )
+  end
+
+  @doc """
   Extracts metadata from a PDF file info trailers. Typically includes "CreationDate", "ModDate", "Producer", et cetera.
 
   ## Examples

@@ -20,6 +20,7 @@ making it suitable for various use cases from local file processing to web-based
 - 📐 Extract words together with their position on the page
 - 📋 Extract tables as rows of cells
 - 🔐 Open encrypted PDFs with a password
+- 📏 Get the number of pages and the size and rotation of each page
 - 🌐 Work with PDF data directly from memory (e.g., HTTP downloads)
 - 📊 Get PDF metadata like title, author, creation date
 - 🐍 Leverages Python's powerful `pdfplumber` library
@@ -91,6 +92,17 @@ Columns of statements and tables stay aligned instead of being flattened into si
 
 ```elixir
 PdfExtractor.extract_text("path/to/document.pdf", 0, layout: true)
+```
+
+### Page Info
+
+Use `extract_page_info/3` to get the size of each page in points, the frame the areas above use,
+and its rotation. The size of the map is the number of pages:
+
+```elixir
+{:ok, pages} = PdfExtractor.extract_page_info("path/to/document.pdf")
+# {:ok, %{0 => %{width: 612.0, height: 792.0, rotation: 0}, 1 => ...}}
+map_size(pages)
 ```
 
 ### Encrypted Files
