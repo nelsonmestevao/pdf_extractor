@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `extract_words/3` and `extract_words_from_binary/3` to get every word with its bounding box on the page
 - Add `layout: true` option to `extract_text/3` and `extract_text_from_binary/3` to keep the position of the text on the page
-- Add `extract_tables/3` and `extract_tables_from_binary/3` with `vertical_strategy` and `horizontal_strategy` options
+- Add `extract_tables/3` and `extract_tables_from_binary/3` to get the rows and bounding box of each table, with `vertical_strategy` and `horizontal_strategy` options
 - Add `password` option to every function to open encrypted PDFs
 - Add `extract_page_info/3` and `extract_page_info_from_binary/3` to get the number of pages and the size and rotation of each one
 

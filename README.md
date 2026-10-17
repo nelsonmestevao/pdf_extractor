@@ -116,12 +116,21 @@ PdfExtractor.extract_text("path/to/document.pdf", [], password: "secret")
 
 ### Tables
 
-Use `extract_tables/3` to get the tables of each page as rows of cells. By default the cell borders
-come from the lines drawn on the page; use the `:text` strategy for tables drawn without lines:
+Use `extract_tables/3` to get the tables of each page as rows of cells, together with the bounding
+box of each table. By default the cell borders come from the lines drawn on the page; use the
+`:text` strategy for tables drawn without lines:
 
 ```elixir
 PdfExtractor.extract_tables("path/to/document.pdf", 0)
-# {:ok, %{0 => [[["Item", "Quantity", "Price"], ["Work", "1", "1 500,00 €"]]]}}
+# {:ok,
+#  %{
+#    0 => [
+#      %{
+#        rows: [["Item", "Quantity", "Price"], ["Work", "1", "1 500,00 €"]],
+#        left: 29.25, top: 190.5, right: 582.75, bottom: 211.5
+#      }
+#    ]
+#  }}
 
 PdfExtractor.extract_tables("path/to/document.pdf", 0,
   vertical_strategy: :text,

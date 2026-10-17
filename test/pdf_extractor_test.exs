@@ -369,18 +369,24 @@ defmodule PdfExtractorTest do
   end
 
   describe "extract_tables/3" do
-    @header_row ["Item", "Quantidade", "Avaliar", "Quantia"]
+    @header_table %{
+      rows: [["Item", "Quantidade", "Avaliar", "Quantia"]],
+      left: 29.25,
+      top: 190.5,
+      right: 582.75,
+      bottom: 211.5
+    }
 
     test "extracts the tables of all pages when no page numbers specified" do
       assert PdfExtractor.extract_tables(@test_file_path) ==
-               {:ok, %{0 => [[@header_row]], 1 => []}}
+               {:ok, %{0 => [@header_table], 1 => []}}
 
       assert PdfExtractor.extract_tables(@test_file_path, []) ==
-               {:ok, %{0 => [[@header_row]], 1 => []}}
+               {:ok, %{0 => [@header_table], 1 => []}}
     end
 
     test "extracts tables from single page when integer provided" do
-      assert PdfExtractor.extract_tables(@test_file_path, 0) == {:ok, %{0 => [[@header_row]]}}
+      assert PdfExtractor.extract_tables(@test_file_path, 0) == {:ok, %{0 => [@header_table]}}
       assert PdfExtractor.extract_tables(@test_file_path, 1) == {:ok, %{1 => []}}
     end
 
@@ -388,7 +394,7 @@ defmodule PdfExtractorTest do
       areas = %{0 => {0, 180, 595, 260}, 1 => [{0, 0, 300, 400}]}
 
       assert PdfExtractor.extract_tables(@test_file_path, areas) ==
-               {:ok, %{0 => [[@header_row]], 1 => [[]]}}
+               {:ok, %{0 => [@header_table], 1 => [[]]}}
     end
 
     test "finds tables without drawn lines from the alignment of the words" do
@@ -398,13 +404,16 @@ defmodule PdfExtractorTest do
                  horizontal_strategy: :text
                )
 
-      assert length(table) == 23
-      assert Enum.all?(table, &(length(&1) == 6))
-      assert List.last(table) == ["", "", "Total:", "", "1 5", "25,59 €"]
+      assert length(table.rows) == 23
+      assert Enum.all?(table.rows, &(length(&1) == 6))
+      assert List.last(table.rows) == ["", "", "Total:", "", "1 5", "25,59 €"]
+
+      assert {table.left, table.top, table.right, table.bottom} ==
+               {44.25, 27.20625000000001, 568.0695, 356.64225}
     end
 
     test "returns nil for cells without text" do
-      assert {:ok, %{0 => [[first_row | _]]}} =
+      assert {:ok, %{0 => [%{rows: [first_row | _]}]}} =
                PdfExtractor.extract_tables(@test_file_path, 0,
                  vertical_strategy: :text,
                  horizontal_strategy: :lines
@@ -434,7 +443,7 @@ defmodule PdfExtractorTest do
     test "returns error for invalid pages without crashing the server", %{pid: pid} do
       assert {:error, %FunctionClauseError{}} = PdfExtractor.extract_tables(@test_file_path, "0")
       assert Process.alive?(pid)
-      assert PdfExtractor.extract_tables(@test_file_path, 0) == {:ok, %{0 => [[@header_row]]}}
+      assert PdfExtractor.extract_tables(@test_file_path, 0) == {:ok, %{0 => [@header_table]}}
     end
   end
 
@@ -461,7 +470,7 @@ defmodule PdfExtractorTest do
       areas = %{0 => {0, 180, 595, 260}, 1 => [{0, 0, 300, 400}]}
 
       assert PdfExtractor.extract_tables_from_binary(test_file_binary_content, areas) ==
-               {:ok, %{0 => [[@header_row]], 1 => [[]]}}
+               {:ok, %{0 => [@header_table], 1 => [[]]}}
     end
 
     test "returns error for invalid binary without crashing the server", %{pid: pid} do

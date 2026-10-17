@@ -32,7 +32,10 @@ defmodule PdfExtractor.PdfPlumber do
           "vertical_strategy": options["vertical_strategy"],
           "horizontal_strategy": options["horizontal_strategy"],
       }
-      return page.extract_tables(settings)
+      return [
+          (table.extract(), float(table.bbox[0]), float(table.bbox[1]), float(table.bbox[2]), float(table.bbox[3]))
+          for table in page.find_tables(settings)
+      ]
 
   def extract_page_info(page, options):
       return (float(page.width), float(page.height), page.rotation)
@@ -92,7 +95,13 @@ defmodule PdfExtractor.PdfPlumber do
           horizontal_strategy: table_strategy(),
           password: String.t() | nil
         }
-  @type table :: list(list(String.t() | nil))
+  @type table :: %{
+          rows: list(list(String.t() | nil)),
+          left: float(),
+          right: float(),
+          top: float(),
+          bottom: float()
+        }
 
   @spec extract_text(file_path :: String.t(), pages(), text_options()) ::
           %{page() => String.t() | list(String.t())}
@@ -163,14 +172,9 @@ defmodule PdfExtractor.PdfPlumber do
   def extract_tables(file_path, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
 
-    extract(
-      "file_path.decode('utf-8')",
-      %{"file_path" => file_path},
-      page_numbers,
-      areas,
-      "extract_tables",
-      options
-    )
+    "file_path.decode('utf-8')"
+    |> extract(%{"file_path" => file_path}, page_numbers, areas, "extract_tables", options)
+    |> decode_pages(&decode_table/1)
   end
 
   @spec extract_tables_from_binary(binary(), pages(), table_options()) ::
@@ -178,8 +182,8 @@ defmodule PdfExtractor.PdfPlumber do
   def extract_tables_from_binary(binary, pages, options) do
     {page_numbers, areas} = normalize_pages(pages)
 
-    extract(
-      "BytesIO(binary)",
+    "BytesIO(binary)"
+    |> extract(
       %{"binary" => binary},
       page_numbers,
       areas,
@@ -187,6 +191,7 @@ defmodule PdfExtractor.PdfPlumber do
       options,
       "from io import BytesIO\n"
     )
+    |> decode_pages(&decode_table/1)
   end
 
   @spec extract_page_info(file_path :: String.t(), page() | list(page()), options()) ::
@@ -254,6 +259,10 @@ defmodule PdfExtractor.PdfPlumber do
 
   defp decode_word({text, left, right, top, bottom}) do
     %{text: text, left: left, right: right, top: top, bottom: bottom}
+  end
+
+  defp decode_table({rows, left, top, right, bottom}) do
+    %{rows: rows, left: left, right: right, top: top, bottom: bottom}
   end
 
   defp decode_page_info({width, height, rotation}) do

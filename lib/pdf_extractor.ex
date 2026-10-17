@@ -327,17 +327,20 @@ defmodule PdfExtractor do
   end
 
   @doc """
-  Extracts tables from PDF pages.
+  Extracts tables from PDF pages together with their position on the page.
 
-  Each page maps to the list of tables found on it. A table is a list of rows and a row a list of
-  cells, read left to right and top to bottom. A cell is `nil` when the table has a cell there but no
-  text could be assigned to it.
+  Each page maps to the list of tables found on it. A table is a map with its `:rows`, each one a
+  list of cells read left to right, and the edges of its bounding box, `:left`, `:right`, `:top` and
+  `:bottom`, in PDF points measured from the top left corner of the page. A cell is `nil` when the
+  table has a cell there but no text could be assigned to it. The bounding box can be used as an area
+  with the other functions, for example to read the text right below a table.
 
   See `extract_text/3` for details on how to specify pages, areas, and options.
 
   ## Options
 
-  Besides `:timeout` and `:name`, this function accepts how the edges of the tables are found:
+  Besides `:timeout`, `:name` and `:password`, this function accepts how the edges of the tables
+  are found:
 
   - `:vertical_strategy` - how to find the columns (default: `:lines`)
   - `:horizontal_strategy` - how to find the rows (default: `:lines`)
@@ -353,12 +356,35 @@ defmodule PdfExtractor do
     Extract the tables of every page.
 
       iex> PdfExtractor.extract_tables("priv/fixtures/fatura.pdf")
-      {:ok, %{0 => [[["Item", "Quantidade", "Avaliar", "Quantia"]]], 1 => []}}
+      {:ok,
+       %{
+         0 => [
+           %{
+             rows: [["Item", "Quantidade", "Avaliar", "Quantia"]],
+             left: 29.25,
+             top: 190.5,
+             right: 582.75,
+             bottom: 211.5
+           }
+         ],
+         1 => []
+       }}
 
     Extract only the tables inside an area.
 
       iex> PdfExtractor.extract_tables("priv/fixtures/fatura.pdf", %{0 => {0, 180, 595, 260}})
-      {:ok, %{0 => [[["Item", "Quantidade", "Avaliar", "Quantia"]]]}}
+      {:ok,
+       %{
+         0 => [
+           %{
+             rows: [["Item", "Quantidade", "Avaliar", "Quantia"]],
+             left: 29.25,
+             top: 190.5,
+             right: 582.75,
+             bottom: 211.5
+           }
+         ]
+       }}
 
     Find the columns from the alignment of the words instead of the drawn lines.
 
@@ -369,11 +395,17 @@ defmodule PdfExtractor do
       {:ok,
        %{
          0 => [
-           [
-             [nil, nil, "devedor:", "", "1 52", "5,59 €"],
-             [nil, nil, "", "", "", ""],
-             ["I", "tem Quantidad", "e", "Avaliar", "", "Quantia"]
-           ]
+           %{
+             rows: [
+               [nil, nil, "devedor:", "", "1 52", "5,59 €"],
+               [nil, nil, "", "", "", ""],
+               ["I", "tem Quantidad", "e", "Avaliar", "", "Quantia"]
+             ],
+             left: 44.25,
+             top: 126.75,
+             right: 568.0695,
+             bottom: 211.5
+           }
          ]
        }}
 
@@ -392,7 +424,18 @@ defmodule PdfExtractor do
 
       iex> content = File.read!("priv/fixtures/fatura.pdf")
       ...> PdfExtractor.extract_tables_from_binary(content, 0)
-      {:ok, %{0 => [[["Item", "Quantidade", "Avaliar", "Quantia"]]]}}
+      {:ok,
+       %{
+         0 => [
+           %{
+             rows: [["Item", "Quantidade", "Avaliar", "Quantia"]],
+             left: 29.25,
+             top: 190.5,
+             right: 582.75,
+             bottom: 211.5
+           }
+         ]
+       }}
 
   """
   def extract_tables_from_binary(binary, pages \\ [], opts \\ []) do
