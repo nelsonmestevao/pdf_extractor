@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `password` option to every function to open encrypted PDFs
 - Add `extract_page_info/3` and `extract_page_info_from_binary/3` to get the number of pages and the size and rotation of each one
 - Add `font: true` option to `extract_words/3` and `extract_words_from_binary/3` to get the font name and size of each word
+- Add `render_pages/3` and `render_pages_from_binary/3` to render pages or areas to PNG images
 
 ## [0.8.0] - 2026-10-16
 

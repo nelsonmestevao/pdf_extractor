@@ -7,6 +7,7 @@ defmodule PdfExtractor.PdfPlumber do
   import pdfplumber
   import logging
   import re
+  from io import BytesIO
 
   logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
@@ -49,6 +50,16 @@ defmodule PdfExtractor.PdfPlumber do
 
   def extract_page_info(page, options):
       return (float(page.width), float(page.height), page.rotation)
+
+  def render_page(page, options):
+      image = page.to_image(
+          resolution=options["resolution"],
+          width=options["width"],
+          antialias=options["antialias"],
+      )
+      buffer = BytesIO()
+      image.save(buffer, format="PNG")
+      return buffer.getvalue()
 
   def extract_from_page(page, areas, extract, options):
       if areas is None:
@@ -107,6 +118,12 @@ defmodule PdfExtractor.PdfPlumber do
   @type word_options :: %{font: boolean(), password: String.t() | nil}
   @type options :: %{password: String.t() | nil}
   @type page_info :: %{width: float(), height: float(), rotation: 0 | 90 | 180 | 270}
+  @type render_options :: %{
+          width: pos_integer() | nil,
+          resolution: number() | nil,
+          antialias: boolean(),
+          password: String.t() | nil
+        }
   @type text_options :: %{layout: boolean(), password: String.t() | nil}
   @type table_strategy :: :lines | :lines_strict | :text
   @type table_options :: %{
@@ -154,8 +171,7 @@ defmodule PdfExtractor.PdfPlumber do
       page_numbers,
       areas,
       "extract_text",
-      options,
-      "from io import BytesIO\n"
+      options
     )
   end
 
@@ -180,8 +196,7 @@ defmodule PdfExtractor.PdfPlumber do
       page_numbers,
       areas,
       "extract_words",
-      options,
-      "from io import BytesIO\n"
+      options
     )
     |> decode_pages(&decode_word/1)
   end
@@ -207,8 +222,7 @@ defmodule PdfExtractor.PdfPlumber do
       page_numbers,
       areas,
       "extract_tables",
-      options,
-      "from io import BytesIO\n"
+      options
     )
     |> decode_pages(&decode_table/1)
   end
@@ -234,10 +248,32 @@ defmodule PdfExtractor.PdfPlumber do
       page_numbers,
       areas,
       "extract_page_info",
-      options,
-      "from io import BytesIO\n"
+      options
     )
     |> decode_pages(&decode_page_info/1)
+  end
+
+  @spec render_pages(file_path :: String.t(), pages(), render_options()) ::
+          %{page() => binary() | list(binary())}
+  def render_pages(file_path, pages, options) do
+    {page_numbers, areas} = normalize_pages(pages)
+
+    extract(
+      "file_path.decode('utf-8')",
+      %{"file_path" => file_path},
+      page_numbers,
+      areas,
+      "render_page",
+      options
+    )
+  end
+
+  @spec render_pages_from_binary(binary(), pages(), render_options()) ::
+          %{page() => binary() | list(binary())}
+  def render_pages_from_binary(binary, pages, options) do
+    {page_numbers, areas} = normalize_pages(pages)
+
+    extract("BytesIO(binary)", %{"binary" => binary}, page_numbers, areas, "render_page", options)
   end
 
   defp normalize_pages(page_number) when is_integer(page_number), do: {[page_number], %{}}
@@ -246,7 +282,7 @@ defmodule PdfExtractor.PdfPlumber do
 
   # `options` must use atom keys: Pythonx turns atoms into Python strings but
   # binaries into bytes, so string keys would not be readable as `options["key"]`.
-  defp extract(content_expr, bindings, page_numbers, areas, extractor, options, preamble \\ "") do
+  defp extract(content_expr, bindings, page_numbers, areas, extractor, options) do
     globals =
       Map.merge(bindings, %{
         "page_numbers" => page_numbers,
@@ -255,7 +291,7 @@ defmodule PdfExtractor.PdfPlumber do
       })
 
     """
-    #{preamble}#{@python_prelude}#{@python_extract_code}
+    #{@python_prelude}#{@python_extract_code}
 
     main(#{content_expr}, page_numbers, areas, #{extractor}, options)
     """
@@ -315,8 +351,6 @@ defmodule PdfExtractor.PdfPlumber do
   @spec extract_metadata_from_binary(binary(), options()) :: %{String.t() => term()}
   def extract_metadata_from_binary(binary, options) do
     """
-    from io import BytesIO
-
     #{@python_prelude}#{@python_extract_metadata_code}
 
     main(BytesIO(binary), options)

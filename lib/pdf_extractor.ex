@@ -12,6 +12,7 @@ defmodule PdfExtractor do
   @default_timeout 5_000
   @table_strategies [:lines, :lines_strict, :text]
   @table_defaults [vertical_strategy: :lines, horizontal_strategy: :lines]
+  @render_defaults [width: nil, resolution: nil, antialias: false]
 
   # Client
 
@@ -300,7 +301,9 @@ defmodule PdfExtractor do
       ...>   "priv/fixtures/frankenstein-mary-shelley.pdf",
       ...>   %{
       ...>     1 => {0, 0, 612, 190}
-      ...>   }, font: true)
+      ...>   },
+      ...>   font: true
+      ...> )
       {:ok,
        %{
          1 => [
@@ -538,6 +541,71 @@ defmodule PdfExtractor do
   end
 
   @doc """
+  Renders PDF pages to PNG images.
+
+  Each page maps to the PNG binary of the page, or of the area when one is given, so the same
+  function makes thumbnails of whole pages and crops of a single table or paragraph. Images are
+  quantized to 256 colors, which keeps them small.
+
+  See `extract_text/3` for details on how to specify pages and areas.
+
+  ## Options
+
+  Besides `:timeout`, `:name` and `:password`, this function accepts:
+
+  - `:width` - the width of the image in pixels. The height follows the proportions of the page
+  - `:resolution` - pixels per inch (default: `72`, which gives one pixel per point)
+  - `:antialias` - when `true`, smooths the edges of text and lines (default: `false`)
+
+  `:width` and `:resolution` cannot be given together.
+
+  ## Examples
+
+    Render a thumbnail of the first page.
+
+      iex> {:ok, %{0 => png}} = PdfExtractor.render_pages("priv/fixtures/fatura.pdf", 0, width: 200)
+      ...> <<_::binary-size(16), width::32, height::32, _::binary>> = png
+      ...> {width, height}
+      {200, 259}
+
+    Render only the area of a table.
+
+      iex> {:ok, %{0 => png}} =
+      ...>   PdfExtractor.render_pages("priv/fixtures/fatura.pdf", %{0 => {0, 180, 595, 260}},
+      ...>     width: 200
+      ...>   )
+      ...>
+      ...> <<_::binary-size(16), width::32, height::32, _::binary>> = png
+      ...> {width, height}
+      {200, 26}
+
+  """
+  def render_pages(file_path, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name} = opts = validate_render_opts!(opts)
+    options = Map.take(opts, [:width, :resolution, :antialias, :password])
+    GenServer.call(name, {:render_pages, [file_path, pages, options]}, timeout)
+  end
+
+  @doc """
+  Renders pages from PDF binary data to PNG images. See `render_pages/3` for its options and
+  `extract_text/3` for details on how to specify pages and areas.
+
+  ## Examples
+
+      iex> content = File.read!("priv/fixtures/fatura.pdf")
+      ...> {:ok, %{0 => png}} = PdfExtractor.render_pages_from_binary(content, 0, width: 200)
+      ...> <<_::binary-size(16), width::32, height::32, _::binary>> = png
+      ...> {width, height}
+      {200, 259}
+
+  """
+  def render_pages_from_binary(binary, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name} = opts = validate_render_opts!(opts)
+    options = Map.take(opts, [:width, :resolution, :antialias, :password])
+    GenServer.call(name, {:render_pages_from_binary, [binary, pages, options]}, timeout)
+  end
+
+  @doc """
   Extracts metadata from a PDF file info trailers. Typically includes "CreationDate", "ModDate", "Producer", et cetera.
 
   ## Examples
@@ -609,7 +677,37 @@ defmodule PdfExtractor do
           "expected #{inspect(key)} to be one of #{inspect(@table_strategies)}, got: #{inspect(strategy)}"
   end
 
+  defp validate_opt!({:width, width}) when is_nil(width) or (is_integer(width) and width > 0), do: :ok
+
+  defp validate_opt!({:width, width}) do
+    raise ArgumentError, "expected :width to be a positive integer, got: #{inspect(width)}"
+  end
+
+  defp validate_opt!({:resolution, resolution}) when is_nil(resolution) or (is_number(resolution) and resolution > 0),
+    do: :ok
+
+  defp validate_opt!({:resolution, resolution}) do
+    raise ArgumentError,
+          "expected :resolution to be a positive number, got: #{inspect(resolution)}"
+  end
+
+  defp validate_opt!({:antialias, antialias}) when is_boolean(antialias), do: :ok
+
+  defp validate_opt!({:antialias, antialias}) do
+    raise ArgumentError, "expected :antialias to be a boolean, got: #{inspect(antialias)}"
+  end
+
   defp validate_opt!(_other), do: :ok
+
+  defp validate_render_opts!(opts) do
+    opts = validate_opts!(opts, @render_defaults)
+
+    if opts.width && opts.resolution do
+      raise ArgumentError, ":width and :resolution cannot be given together"
+    end
+
+    opts
+  end
 
   # Server
 

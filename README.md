@@ -21,6 +21,7 @@ making it suitable for various use cases from local file processing to web-based
 - 📋 Extract tables as rows of cells
 - 🔐 Open encrypted PDFs with a password
 - 📏 Get the number of pages and the size and rotation of each page
+- 🖼️ Render pages or areas of them to PNG images
 - 🌐 Work with PDF data directly from memory (e.g., HTTP downloads)
 - 📊 Get PDF metadata like title, author, creation date
 - 🐍 Leverages Python's powerful `pdfplumber` library
@@ -103,6 +104,16 @@ and its rotation. The size of the map is the number of pages:
 {:ok, pages} = PdfExtractor.extract_page_info("path/to/document.pdf")
 # {:ok, %{0 => %{width: 612.0, height: 792.0, rotation: 0}, 1 => ...}}
 map_size(pages)
+```
+
+### Rendering
+
+Use `render_pages/3` to get a PNG of each page, or of an area of it, for thumbnails and previews.
+Give it a `:width` in pixels or a `:resolution` in pixels per inch:
+
+```elixir
+{:ok, %{0 => png}} = PdfExtractor.render_pages("path/to/document.pdf", 0, width: 400)
+File.write!("page-0.png", png)
 ```
 
 ### Encrypted Files

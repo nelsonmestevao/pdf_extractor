@@ -575,6 +575,90 @@ defmodule PdfExtractorTest do
     end
   end
 
+  describe "render_pages/3" do
+    test "renders all pages at 72 dpi when no page numbers or size specified" do
+      assert {:ok, %{0 => page_0, 1 => page_1}} = PdfExtractor.render_pages(@test_file_path)
+
+      assert png_size(page_0) == {612, 792}
+      assert png_size(page_1) == {596, 842}
+    end
+
+    test "renders at the requested width or resolution" do
+      assert {:ok, %{0 => png}} = PdfExtractor.render_pages(@test_file_path, 0, width: 200)
+      assert png_size(png) == {200, 259}
+
+      assert {:ok, %{0 => png}} = PdfExtractor.render_pages(@test_file_path, 0, resolution: 150)
+      assert png_size(png) == {1275, 1651}
+
+      assert {:ok, %{0 => png}} =
+               PdfExtractor.render_pages(@test_file_path, 0, width: 200, antialias: true)
+
+      assert png_size(png) == {200, 259}
+    end
+
+    test "renders only the requested areas" do
+      areas = %{0 => {0, 180, 595, 260}, 1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]}
+
+      assert {:ok, %{0 => table, 1 => [top_left, bottom]}} =
+               PdfExtractor.render_pages(@test_file_path, areas, width: 200)
+
+      assert png_size(table) == {200, 26}
+      assert png_size(top_left) == {200, 266}
+      assert png_size(bottom) == {200, 192}
+    end
+
+    test "raises for invalid sizes" do
+      assert_raise ArgumentError, ~r/cannot be given together/, fn ->
+        PdfExtractor.render_pages(@test_file_path, 0, width: 200, resolution: 150)
+      end
+
+      assert_raise ArgumentError, ~r/expected :width to be a positive integer/, fn ->
+        PdfExtractor.render_pages(@test_file_path, 0, width: 0)
+      end
+
+      assert_raise ArgumentError, ~r/expected :resolution to be a positive number/, fn ->
+        PdfExtractor.render_pages(@test_file_path, 0, resolution: "150")
+      end
+
+      assert_raise ArgumentError, ~r/expected :antialias to be a boolean/, fn ->
+        PdfExtractor.render_pages(@test_file_path, 0, antialias: 1)
+      end
+    end
+
+    test "pages outside the range are just ignored" do
+      assert PdfExtractor.render_pages(@test_file_path, [999]) == {:ok, %{}}
+    end
+
+    test "returns error for non-existent file" do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.render_pages("non_existent_file.pdf")
+    end
+
+    test "opens an encrypted file with its password" do
+      assert {:ok, %{0 => png}} =
+               PdfExtractor.render_pages(@encrypted_file_path, 0, width: 100, password: "secret")
+
+      assert png_size(png) == {100, 130}
+    end
+  end
+
+  describe "render_pages_from_binary/3" do
+    setup do
+      [test_file_binary_content: File.read!(@test_file_path)]
+    end
+
+    test "renders the same images as the file based function", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.render_pages_from_binary(test_file_binary_content, 0, width: 100) ==
+               PdfExtractor.render_pages(@test_file_path, 0, width: 100)
+    end
+
+    test "returns error for invalid binary without crashing the server", %{pid: pid} do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.render_pages_from_binary("not a pdf")
+      assert Process.alive?(pid)
+    end
+  end
+
   describe "password option" do
     test "returns error for an encrypted file without the right password" do
       assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_text(@encrypted_file_path)
@@ -629,5 +713,10 @@ defmodule PdfExtractorTest do
         PdfExtractor.extract_text(@test_file_path, [], password: :secret)
       end
     end
+  end
+
+  # Width and height from the IHDR chunk that follows the 8 byte PNG signature.
+  defp png_size(<<0x89, "PNG\r\n\x1a\n", _length::32, "IHDR", width::32, height::32, _::binary>>) do
+    {width, height}
   end
 end
