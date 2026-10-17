@@ -16,6 +16,13 @@ defmodule PdfExtractor.PdfPlumber do
           for word in page.extract_words()
       ]
 
+  def extract_tables(page, options):
+      settings = {
+          "vertical_strategy": options["vertical_strategy"],
+          "horizontal_strategy": options["horizontal_strategy"],
+      }
+      return page.extract_tables(settings)
+
   def extract_from_page(page, areas, extract, options):
       if areas is None:
           return extract(page, options)
@@ -68,6 +75,12 @@ defmodule PdfExtractor.PdfPlumber do
   @type pages :: page() | list(page()) | %{page() => area() | [area()] | nil}
   @type word :: %{text: String.t(), left: float(), right: float(), top: float(), bottom: float()}
   @type text_options :: %{layout: boolean()}
+  @type table_strategy :: :lines | :lines_strict | :text
+  @type table_options :: %{
+          vertical_strategy: table_strategy(),
+          horizontal_strategy: table_strategy()
+        }
+  @type table :: list(list(String.t() | nil))
 
   @spec extract_text(file_path :: String.t(), pages(), text_options()) ::
           %{page() => String.t() | list(String.t())}
@@ -131,6 +144,37 @@ defmodule PdfExtractor.PdfPlumber do
       "from io import BytesIO\n"
     )
     |> decode_words()
+  end
+
+  @spec extract_tables(file_path :: String.t(), pages(), table_options()) ::
+          %{page() => list(table()) | list(list(table()))}
+  def extract_tables(file_path, pages, options) do
+    {page_numbers, areas} = normalize_pages(pages)
+
+    extract(
+      "file_path.decode('utf-8')",
+      %{"file_path" => file_path},
+      page_numbers,
+      areas,
+      "extract_tables",
+      options
+    )
+  end
+
+  @spec extract_tables_from_binary(binary(), pages(), table_options()) ::
+          %{page() => list(table()) | list(list(table()))}
+  def extract_tables_from_binary(binary, pages, options) do
+    {page_numbers, areas} = normalize_pages(pages)
+
+    extract(
+      "BytesIO(binary)",
+      %{"binary" => binary},
+      page_numbers,
+      areas,
+      "extract_tables",
+      options,
+      "from io import BytesIO\n"
+    )
   end
 
   defp normalize_pages(page_number) when is_integer(page_number), do: {[page_number], %{}}

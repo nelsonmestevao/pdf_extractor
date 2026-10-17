@@ -366,4 +366,106 @@ defmodule PdfExtractorTest do
       assert Process.alive?(pid)
     end
   end
+
+  describe "extract_tables/3" do
+    @header_row ["Item", "Quantidade", "Avaliar", "Quantia"]
+
+    test "extracts the tables of all pages when no page numbers specified" do
+      assert PdfExtractor.extract_tables(@test_file_path) ==
+               {:ok, %{0 => [[@header_row]], 1 => []}}
+
+      assert PdfExtractor.extract_tables(@test_file_path, []) ==
+               {:ok, %{0 => [[@header_row]], 1 => []}}
+    end
+
+    test "extracts tables from single page when integer provided" do
+      assert PdfExtractor.extract_tables(@test_file_path, 0) == {:ok, %{0 => [[@header_row]]}}
+      assert PdfExtractor.extract_tables(@test_file_path, 1) == {:ok, %{1 => []}}
+    end
+
+    test "handles different area specifications for different pages" do
+      areas = %{0 => {0, 180, 595, 260}, 1 => [{0, 0, 300, 400}]}
+
+      assert PdfExtractor.extract_tables(@test_file_path, areas) ==
+               {:ok, %{0 => [[@header_row]], 1 => [[]]}}
+    end
+
+    test "finds tables without drawn lines from the alignment of the words" do
+      assert {:ok, %{0 => [table]}} =
+               PdfExtractor.extract_tables(@test_file_path, 0,
+                 vertical_strategy: :text,
+                 horizontal_strategy: :text
+               )
+
+      assert length(table) == 23
+      assert Enum.all?(table, &(length(&1) == 6))
+      assert List.last(table) == ["", "", "Total:", "", "1 5", "25,59 €"]
+    end
+
+    test "returns nil for cells without text" do
+      assert {:ok, %{0 => [[first_row | _]]}} =
+               PdfExtractor.extract_tables(@test_file_path, 0,
+                 vertical_strategy: :text,
+                 horizontal_strategy: :lines
+               )
+
+      assert first_row == [nil, nil, "devedor:", "", "1 52", "5,59 €"]
+    end
+
+    test "raises for an unknown strategy" do
+      assert_raise ArgumentError, ~r/expected :vertical_strategy to be one of/, fn ->
+        PdfExtractor.extract_tables(@test_file_path, [], vertical_strategy: :magic)
+      end
+
+      assert_raise ArgumentError, ~r/expected :horizontal_strategy to be one of/, fn ->
+        PdfExtractor.extract_tables(@test_file_path, [], horizontal_strategy: "lines")
+      end
+    end
+
+    test "pages outside the range are just ignored" do
+      assert PdfExtractor.extract_tables(@test_file_path, [999]) == {:ok, %{}}
+    end
+
+    test "returns error for non-existent file" do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_tables("non_existent_file.pdf")
+    end
+
+    test "returns error for invalid pages without crashing the server", %{pid: pid} do
+      assert {:error, %FunctionClauseError{}} = PdfExtractor.extract_tables(@test_file_path, "0")
+      assert Process.alive?(pid)
+      assert PdfExtractor.extract_tables(@test_file_path, 0) == {:ok, %{0 => [[@header_row]]}}
+    end
+  end
+
+  describe "extract_tables_from_binary/3" do
+    setup do
+      [test_file_binary_content: File.read!(@test_file_path)]
+    end
+
+    test "extracts the same tables as the file based function", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.extract_tables_from_binary(test_file_binary_content) ==
+               PdfExtractor.extract_tables(@test_file_path)
+
+      options = [vertical_strategy: :text, horizontal_strategy: :text]
+
+      assert PdfExtractor.extract_tables_from_binary(test_file_binary_content, 0, options) ==
+               PdfExtractor.extract_tables(@test_file_path, 0, options)
+    end
+
+    test "handles different area specifications for different pages", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      areas = %{0 => {0, 180, 595, 260}, 1 => [{0, 0, 300, 400}]}
+
+      assert PdfExtractor.extract_tables_from_binary(test_file_binary_content, areas) ==
+               {:ok, %{0 => [[@header_row]], 1 => [[]]}}
+    end
+
+    test "returns error for invalid binary without crashing the server", %{pid: pid} do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_tables_from_binary("not a pdf")
+      assert Process.alive?(pid)
+    end
+  end
 end

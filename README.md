@@ -18,6 +18,7 @@ making it suitable for various use cases from local file processing to web-based
 - 🔍 Extract text from single or multiple PDF pages
 - 📍 Area-based extraction using bounding boxes
 - 📐 Extract words together with their position on the page
+- 📋 Extract tables as rows of cells
 - 🌐 Work with PDF data directly from memory (e.g., HTTP downloads)
 - 📊 Get PDF metadata like title, author, creation date
 - 🐍 Leverages Python's powerful `pdfplumber` library
@@ -89,6 +90,21 @@ Columns of statements and tables stay aligned instead of being flattened into si
 
 ```elixir
 PdfExtractor.extract_text("path/to/document.pdf", 0, layout: true)
+```
+
+### Tables
+
+Use `extract_tables/3` to get the tables of each page as rows of cells. By default the cell borders
+come from the lines drawn on the page; use the `:text` strategy for tables drawn without lines:
+
+```elixir
+PdfExtractor.extract_tables("path/to/document.pdf", 0)
+# {:ok, %{0 => [[["Item", "Quantity", "Price"], ["Work", "1", "1 500,00 €"]]]}}
+
+PdfExtractor.extract_tables("path/to/document.pdf", 0,
+  vertical_strategy: :text,
+  horizontal_strategy: :text
+)
 ```
 
 ### Words With Positions

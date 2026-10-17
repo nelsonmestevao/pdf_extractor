@@ -10,6 +10,8 @@ defmodule PdfExtractor do
   @external_resource "README.md"
 
   @default_timeout 5_000
+  @table_strategies [:lines, :lines_strict, :text]
+  @table_defaults [vertical_strategy: :lines, horizontal_strategy: :lines]
 
   # Client
 
@@ -304,6 +306,81 @@ defmodule PdfExtractor do
   end
 
   @doc """
+  Extracts tables from PDF pages.
+
+  Each page maps to the list of tables found on it. A table is a list of rows and a row a list of
+  cells, read left to right and top to bottom. A cell is `nil` when the table has a cell there but no
+  text could be assigned to it.
+
+  See `extract_text/3` for details on how to specify pages, areas, and options.
+
+  ## Options
+
+  Besides `:timeout` and `:name`, this function accepts how the edges of the tables are found:
+
+  - `:vertical_strategy` - how to find the columns (default: `:lines`)
+  - `:horizontal_strategy` - how to find the rows (default: `:lines`)
+
+  Each strategy is one of:
+
+  - `:lines` - use the lines drawn on the page, including the sides of rectangles, as cell borders
+  - `:lines_strict` - like `:lines` but ignore the sides of rectangles
+  - `:text` - infer the borders from the alignment of the words, for tables drawn without lines
+
+  ## Examples
+
+    Extract the tables of every page.
+
+      iex> PdfExtractor.extract_tables("priv/fixtures/fatura.pdf")
+      {:ok, %{0 => [[["Item", "Quantidade", "Avaliar", "Quantia"]]], 1 => []}}
+
+    Extract only the tables inside an area.
+
+      iex> PdfExtractor.extract_tables("priv/fixtures/fatura.pdf", %{0 => {0, 180, 595, 260}})
+      {:ok, %{0 => [[["Item", "Quantidade", "Avaliar", "Quantia"]]]}}
+
+    Find the columns from the alignment of the words instead of the drawn lines.
+
+      iex> PdfExtractor.extract_tables("priv/fixtures/fatura.pdf", 0,
+      ...>   vertical_strategy: :text,
+      ...>   horizontal_strategy: :lines
+      ...> )
+      {:ok,
+       %{
+         0 => [
+           [
+             [nil, nil, "devedor:", "", "1 52", "5,59 €"],
+             [nil, nil, "", "", "", ""],
+             ["I", "tem Quantidad", "e", "Avaliar", "", "Quantia"]
+           ]
+         ]
+       }}
+
+  """
+  def extract_tables(file_path, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name} = opts = validate_opts!(opts, @table_defaults)
+    options = Map.take(opts, [:vertical_strategy, :horizontal_strategy])
+    GenServer.call(name, {:extract_tables, [file_path, pages, options]}, timeout)
+  end
+
+  @doc """
+  Extracts tables from PDF binary data. See `extract_tables/3` for the shape of each table and its
+  options, and `extract_text/3` for details on how to specify pages and areas.
+
+  ## Examples
+
+      iex> content = File.read!("priv/fixtures/fatura.pdf")
+      ...> PdfExtractor.extract_tables_from_binary(content, 0)
+      {:ok, %{0 => [[["Item", "Quantidade", "Avaliar", "Quantia"]]]}}
+
+  """
+  def extract_tables_from_binary(binary, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name} = opts = validate_opts!(opts, @table_defaults)
+    options = Map.take(opts, [:vertical_strategy, :horizontal_strategy])
+    GenServer.call(name, {:extract_tables_from_binary, [binary, pages, options]}, timeout)
+  end
+
+  @doc """
   Extracts metadata from a PDF file info trailers. Typically includes "CreationDate", "ModDate", "Producer", et cetera.
 
   ## Examples
@@ -345,6 +422,14 @@ defmodule PdfExtractor do
 
   defp validate_opt!({:layout, layout}) do
     raise ArgumentError, "expected :layout to be a boolean, got: #{inspect(layout)}"
+  end
+
+  defp validate_opt!({key, strategy})
+       when key in [:vertical_strategy, :horizontal_strategy] and strategy in @table_strategies, do: :ok
+
+  defp validate_opt!({key, strategy}) when key in [:vertical_strategy, :horizontal_strategy] do
+    raise ArgumentError,
+          "expected #{inspect(key)} to be one of #{inspect(@table_strategies)}, got: #{inspect(strategy)}"
   end
 
   defp validate_opt!(_other), do: :ok
