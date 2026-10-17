@@ -187,6 +187,98 @@ defmodule PdfExtractor do
   end
 
   @doc """
+  Extracts words from PDF pages together with their position on the page.
+
+  Each word is a map with its `:text` and the edges of its bounding box, `:left`, `:right`, `:top` and
+  `:bottom`, in PDF points measured from the top left corner of the page. Words come in the order
+  `pdfplumber` reads them, which is the same order `extract_text/3` uses to build its text.
+
+  See `extract_text/3` for details on how to specify pages, areas, and options.
+
+  ## Examples
+
+    Extract the words of a single page.
+
+      iex> {:ok, %{0 => words}} = PdfExtractor.extract_words("priv/fixtures/fatura.pdf", 0)
+      ...> Enum.take(words, 3)
+      [
+        %{
+          text: "Text",
+          left: 48.0,
+          right: 67.99875,
+          top: 26.64224999999999,
+          bottom: 36.39224999999999
+        },
+        %{
+          text: "Example",
+          left: 70.734375,
+          right: 110.757,
+          top: 26.64224999999999,
+          bottom: 36.39224999999999
+        },
+        %{
+          text: "Bill",
+          left: 113.49609375,
+          right: 128.63240625,
+          top: 26.64224999999999,
+          bottom: 36.39224999999999
+        }
+      ]
+
+    Extract only the words inside an area.
+
+      iex> PdfExtractor.extract_words("priv/fixtures/frankenstein-mary-shelley.pdf", %{
+      ...>   1 => {0, 0, 612, 190}
+      ...> })
+      {:ok,
+       %{
+         1 => [
+           %{
+             text: "Frankenstein",
+             left: 76.99218429199217,
+             right: 177.95707306012164,
+             top: 102.2249957406251,
+             bottom: 132.22499449062502
+           }
+         ]
+       }}
+
+  """
+  def extract_words(file_path, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name} = validate_opts!(opts)
+    GenServer.call(name, {:extract_words, [file_path, pages]}, timeout)
+  end
+
+  @doc """
+  Extracts words from PDF binary data. See `extract_words/3` for the shape of each word and `extract_text/3`
+  for details on how to specify pages, areas, and options.
+
+  ## Examples
+
+    Extract only the words inside an area.
+
+      iex> content = File.read!("priv/fixtures/frankenstein-mary-shelley.pdf")
+      ...> PdfExtractor.extract_words_from_binary(content, %{1 => {0, 0, 612, 190}})
+      {:ok,
+       %{
+         1 => [
+           %{
+             text: "Frankenstein",
+             left: 76.99218429199217,
+             right: 177.95707306012164,
+             top: 102.2249957406251,
+             bottom: 132.22499449062502
+           }
+         ]
+       }}
+
+  """
+  def extract_words_from_binary(binary, pages \\ [], opts \\ []) do
+    %{timeout: timeout, name: name} = validate_opts!(opts)
+    GenServer.call(name, {:extract_words_from_binary, [binary, pages]}, timeout)
+  end
+
+  @doc """
   Extracts metadata from a PDF file info trailers. Typically includes "CreationDate", "ModDate", "Producer", et cetera.
 
   ## Examples

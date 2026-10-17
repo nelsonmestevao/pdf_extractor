@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add `extract_words/3` and `extract_words_from_binary/3` to get every word with its bounding box on the page
+
 ## [0.8.0] - 2026-10-16
 
 - Upgrade Python to v3.14 and pin uv to v0.12.24 so recent CPython builds are available

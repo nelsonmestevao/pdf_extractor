@@ -17,6 +17,7 @@ making it suitable for various use cases from local file processing to web-based
 
 - 🔍 Extract text from single or multiple PDF pages
 - 📍 Area-based extraction using bounding boxes
+- 📐 Extract words together with their position on the page
 - 🌐 Work with PDF data directly from memory (e.g., HTTP downloads)
 - 📊 Get PDF metadata like title, author, creation date
 - 🐍 Leverages Python's powerful `pdfplumber` library
@@ -79,6 +80,23 @@ The function returns a map where keys are page numbers and values are the extrac
   1 => ["Text from page 1 (first area)...", "Text from page 1 (second area)..."],
   2 => "Text from page 2..."
 }
+```
+
+### Words With Positions
+
+Use `extract_words/3` to get every word with its bounding box in PDF points, measured from the top left
+corner of the page. It takes the same pages and areas as `extract_text/3`:
+
+```elixir
+PdfExtractor.extract_words("path/to/document.pdf", 0)
+# {:ok,
+#  %{
+#    0 => [
+#      %{text: "Text", left: 48.0, right: 67.99875, top: 26.64224999999999, bottom: 36.39224999999999},
+#      %{text: "Example", left: 70.734375, right: 110.757, top: 26.64224999999999, bottom: 36.39224999999999},
+#      ...
+#    ]
+#  }}
 ```
 
 ## License

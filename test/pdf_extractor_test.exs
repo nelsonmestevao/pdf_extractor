@@ -217,4 +217,126 @@ defmodule PdfExtractorTest do
       assert Process.alive?(pid)
     end
   end
+
+  describe "extract_words/3" do
+    test "extracts words with their bounding box from all pages when no page numbers specified" do
+      assert {:ok, result} = PdfExtractor.extract_words(@test_file_path)
+
+      assert Map.keys(result) == [0, 1]
+      assert length(result[0]) == 52
+      assert length(result[1]) == 70
+
+      for {_page_number, words} <- result, word <- words do
+        assert %{text: text, left: left, right: right, top: top, bottom: bottom} = word
+        assert is_binary(text) and text != ""
+        assert is_float(left) and is_float(right) and is_float(top) and is_float(bottom)
+        assert left < right
+        assert top < bottom
+      end
+
+      assert PdfExtractor.extract_words(@test_file_path, []) == {:ok, result}
+    end
+
+    test "extracts words from single page when integer provided" do
+      assert {:ok, result} = PdfExtractor.extract_words(@test_file_path, 0)
+
+      assert Map.keys(result) == [0]
+
+      assert List.first(result[0]) == %{
+               text: "Text",
+               left: 48.0,
+               right: 67.99875,
+               top: 26.64224999999999,
+               bottom: 36.39224999999999
+             }
+    end
+
+    test "extracts words from specified pages when list provided" do
+      assert {:ok, result} = PdfExtractor.extract_words(@test_file_path, [1])
+
+      assert Map.keys(result) == [1]
+      assert Enum.map(Enum.take(result[1], -2), & &1.text) == ["Acceptance", "point"]
+    end
+
+    test "words follow the same reading order as the extracted text" do
+      assert {:ok, %{0 => words}} = PdfExtractor.extract_words(@test_file_path, 0)
+
+      assert Enum.map_join(words, " ", & &1.text) ==
+               String.replace(@test_file_content[0], "\n", " ")
+    end
+
+    test "handles different area specifications for different pages" do
+      areas = %{
+        0 => {0, 0, 300, 200},
+        1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
+      }
+
+      assert {:ok, %{0 => page_0, 1 => [[], page_1_bottom]}} =
+               PdfExtractor.extract_words(@test_file_path, areas)
+
+      assert Enum.map(page_0, & &1.text) ==
+               ~w(Text Example Bill Projeto de lei para: Elixir Company)
+
+      assert Enum.map(Enum.take(page_1_bottom, -2), & &1.text) == ["Acceptance", "point"]
+    end
+
+    test "pages outside the range are just ignored" do
+      assert PdfExtractor.extract_words(@test_file_path, [999]) == {:ok, %{}}
+    end
+
+    test "returns error for non-existent file" do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_words("non_existent_file.pdf")
+    end
+
+    test "returns error for invalid pages without crashing the server", %{pid: pid} do
+      assert {:error, %FunctionClauseError{}} = PdfExtractor.extract_words(@test_file_path, "0")
+      assert Process.alive?(pid)
+      assert {:ok, %{0 => _, 1 => _}} = PdfExtractor.extract_words(@test_file_path)
+    end
+  end
+
+  describe "extract_words_from_binary/3" do
+    setup do
+      [test_file_binary_content: File.read!(@test_file_path)]
+    end
+
+    test "extracts the same words as the file based function", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.extract_words_from_binary(test_file_binary_content) ==
+               PdfExtractor.extract_words(@test_file_path)
+
+      assert PdfExtractor.extract_words_from_binary(test_file_binary_content, 1) ==
+               PdfExtractor.extract_words(@test_file_path, 1)
+    end
+
+    test "handles different area specifications for different pages", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      areas = %{
+        0 => {0, 0, 300, 200},
+        1 => [{0, 0, 300, 400}, {0, 270, 595, 840}]
+      }
+
+      assert {:ok, %{0 => page_0, 1 => [[], page_1_bottom]}} =
+               PdfExtractor.extract_words_from_binary(test_file_binary_content, areas)
+
+      assert Enum.map(page_0, & &1.text) ==
+               ~w(Text Example Bill Projeto de lei para: Elixir Company)
+
+      assert Enum.map(Enum.take(page_1_bottom, -2), & &1.text) == ["Acceptance", "point"]
+    end
+
+    test "pages outside the range are just ignored", %{
+      test_file_binary_content: test_file_binary_content
+    } do
+      assert PdfExtractor.extract_words_from_binary(test_file_binary_content, [999]) ==
+               {:ok, %{}}
+    end
+
+    test "returns error for invalid binary without crashing the server", %{pid: pid} do
+      assert {:error, %Pythonx.Error{}} = PdfExtractor.extract_words_from_binary("not a pdf")
+      assert Process.alive?(pid)
+    end
+  end
 end
