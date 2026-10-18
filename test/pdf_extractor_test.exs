@@ -351,6 +351,21 @@ defmodule PdfExtractorTest do
     end
   end
 
+  describe "ActualText" do
+    # The font of this file maps "#" to no text, as the glyphs of some
+    # generated statements do; their text is only in the ActualText around them.
+    @actual_text_path "priv/fixtures/actual-text.pdf"
+
+    test "extract_text/3 reads characters whose text is only given as ActualText" do
+      assert PdfExtractor.extract_text(@actual_text_path) == {:ok, %{0 => "Total: 42\nPaid"}}
+    end
+
+    test "extract_words/3 reads them as part of their words" do
+      assert {:ok, %{0 => words}} = PdfExtractor.extract_words(@actual_text_path)
+      assert Enum.map(words, & &1.text) == ["Total:", "42", "Paid"]
+    end
+  end
+
   describe "extract_words_from_binary/3" do
     setup do
       [test_file_binary_content: File.read!(@test_file_path)]

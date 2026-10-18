@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Read the text of characters a PDF gives only as ActualText, such as glyphs mapped to no text of their own, which came out as `\u0000` or not at all
+
 ## [0.10.0] - 2026-10-17
 
 - **Breaking:** `extract_tables/3` and `extract_tables_from_binary/3` return each table as a map with its `rows` and the `left`, `right`, `top` and `bottom` edges of its bounding box, instead of only the rows

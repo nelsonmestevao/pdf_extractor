@@ -3,13 +3,45 @@ defmodule PdfExtractor.PdfPlumber do
 
   # Shared by every Python snippet. Pythonx hands binaries to Python as bytes,
   # so the password is decoded before reaching pdfplumber, which expects a str.
+  #
+  # Some PDFs draw characters with glyphs that map to no text and give their
+  # text only as the ActualText of the marked content around them, which
+  # pdfplumber ignores. Every page is laid out by pdfplumber's
+  # PDFPageAggregatorWithMarkedContent, so a subclass that gives the first
+  # character of such a span its ActualText, and the others none, takes its
+  # place. The interpreter outlives each snippet: it is installed only once.
   @python_prelude """
   import pdfplumber
   import logging
   import re
   from io import BytesIO
+  from pdfminer.utils import decode_text
+  from pdfplumber import page as pdfplumber_page
 
   logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
+  if not hasattr(pdfplumber_page, "ActualTextAggregator"):
+      class ActualTextAggregator(pdfplumber_page.PDFPageAggregatorWithMarkedContent):
+          actual_text = None
+
+          def begin_tag(self, tag, props=None):
+              super().begin_tag(tag, props)
+              text = props.get("ActualText") if isinstance(props, dict) else None
+              self.actual_text = decode_text(text) if isinstance(text, bytes) else text
+
+          def end_tag(self):
+              super().end_tag()
+              self.actual_text = None
+
+          def render_char(self, *args, **kwargs):
+              advance = super().render_char(*args, **kwargs)
+              if self.actual_text is not None and self.cur_item._objs:
+                  self.cur_item._objs[-1]._text = self.actual_text
+                  self.actual_text = ""
+              return advance
+
+      pdfplumber_page.ActualTextAggregator = ActualTextAggregator
+      pdfplumber_page.PDFPageAggregatorWithMarkedContent = ActualTextAggregator
 
   def open_pdf(content, options):
       password = options.get("password")
