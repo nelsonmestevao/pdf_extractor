@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-18
+
 - Read the text of characters a PDF gives only as ActualText, such as glyphs mapped to no text of their own, which came out as `\u0000` or not at all
 
 ## [0.10.0] - 2026-10-17
@@ -110,7 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pythonx ~> 0.4.0 for Python integration
 - Requires Python with pdfplumber package installed
 
-[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/nelsonmestevao/pdf_extractor/compare/v0.7.0...v0.8.0
