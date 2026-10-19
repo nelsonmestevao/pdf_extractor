@@ -29,6 +29,14 @@ making it suitable for various use cases from local file processing to web-based
 - ✅ Comprehensive test coverage
 - 📚 Full documentation
 
+## Example Project
+
+[TextDrop](https://textdrop.estevao.org) is a web app built on PdfExtractor where you can try its
+features in the browser. Upload a PDF to read its metadata, browse its pages, draw areas on a page
+to extract the text inside them, and see every word and table the page contains.
+
+The source code is in the [Francis examples](https://github.com/francis-build/francis/tree/main/examples/textdrop).
+
 ## Installation
 
 Add `pdf_extractor` to your list of dependencies in `mix.exs`:
