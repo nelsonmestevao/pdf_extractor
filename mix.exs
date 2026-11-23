@@ -38,6 +38,7 @@ defmodule PdfExtractor.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:doctest_formatter, "~> 0.4.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.38", only: :dev, runtime: false},
+      {:igniter, "~> 0.8", only: :dev, runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
   end
